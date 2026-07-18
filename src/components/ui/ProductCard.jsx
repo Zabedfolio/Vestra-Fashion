@@ -7,6 +7,7 @@ import { useState } from 'react';
 export default function ProductCard({ product }) {
   const [wishlisted, setWishlisted] = useState(false);
 
+  const pid = product._id || product.id;
   const firstColor = product.colors?.[0] ?? null;
 
   return (
@@ -16,7 +17,7 @@ export default function ProductCard({ product }) {
       <div className="relative rounded-2xl bg-[#F0F0F0] overflow-hidden aspect-[3/4]">
 
         {/* Product image */}
-        <Link href={`/products/${product.id}`} className="block w-full h-full">
+        <Link href={`/products/${pid}`} className="block w-full h-full">
           <Image
             src={product.image}
             alt={product.name}
@@ -26,7 +27,7 @@ export default function ProductCard({ product }) {
           />
         </Link>
 
-        {/* Top-left badges */}
+        {/* Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-2">
           {product.discountPercent > 0 && (
             <span className="bg-[#111111] text-white text-[11px] font-heading font-bold tracking-wide px-3 py-1.5 rounded-full">
@@ -64,7 +65,7 @@ export default function ProductCard({ product }) {
 
           {/* Quick view / Add to cart */}
           <Link
-            href={`/products/${product.id}`}
+            href={`/products/${pid}`}
             aria-label="Quick view"
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors duration-200 active:scale-95"
           >
@@ -96,7 +97,7 @@ export default function ProductCard({ product }) {
         </div>
         {/* Row 2: name + price */}
         <div className="flex items-end justify-between gap-2">
-          <Link href={`/products/${product.id}`}>
+          <Link href={`/products/${pid}`}>
             <h3 className="font-heading font-bold text-[#111111] text-sm sm:text-base leading-snug hover:text-zinc-600 transition-colors line-clamp-2">
               {product.name}
             </h3>

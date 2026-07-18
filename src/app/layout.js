@@ -3,6 +3,9 @@ import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import ToasterProvider from "../components/ui/ToasterProvider";
 import CartDrawer from "../components/layout/CartDrawer";
+import QueryProvider from "../components/ui/QueryProvider";
+import { AuthProvider } from "../lib/auth-context";
+import ChatWidget from "../components/ai/ChatWidget";
 
 export const metadata = {
   title: "VESTRA | Modern Premium Fashion Store",
@@ -22,13 +25,18 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="font-body min-h-full flex flex-col antialiased bg-white">
-        <ToasterProvider />
-        <CartDrawer />
-        <Navbar />
-        <main className="flex-grow flex flex-col">
-          {children}
-        </main>
-        <Footer />
+        <QueryProvider>
+          <AuthProvider>
+            <ToasterProvider />
+            <CartDrawer />
+            <Navbar />
+            <main className="flex-grow flex flex-col">
+              {children}
+            </main>
+            <ChatWidget />
+            <Footer />
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

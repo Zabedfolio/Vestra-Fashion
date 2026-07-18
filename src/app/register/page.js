@@ -1,25 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
 import toast from 'react-hot-toast';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const { register } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.");
       return;
     }
-    if (name && email && password) {
-      toast.success('Account created successfully! Welcome to VESTRA (Demo).');
-    } else {
+    if (!name || !email || !password) {
       toast.error('Please fill in all fields.');
+      return;
+    }
+    try {
+      await register(name, email, password);
+      router.push(redirect || '/');
+    } catch (error) {
+      // Error is toasted inside auth.js register/login
     }
   };
 
@@ -51,6 +62,7 @@ export default function RegisterPage() {
               <input
                 id="name"
                 type="text"
+                name="name"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -67,6 +79,7 @@ export default function RegisterPage() {
               <input
                 id="email"
                 type="email"
+                name="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -83,6 +96,7 @@ export default function RegisterPage() {
               <input
                 id="password"
                 type="password"
+                name="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -99,6 +113,7 @@ export default function RegisterPage() {
               <input
                 id="confirmPassword"
                 type="password"
+                name="confirmPassword"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -112,6 +127,7 @@ export default function RegisterPage() {
               <input
                 id="terms"
                 type="checkbox"
+                name="terms"
                 required
                 className="w-4 h-4 mt-0.5 rounded border-zinc-300 text-dark focus:ring-dark cursor-pointer"
               />
@@ -133,7 +149,7 @@ export default function RegisterPage() {
           <div className="mt-8 pt-6 border-t border-zinc-200/60 text-center">
             <p className="text-xs font-body text-zinc-500">
               Already have an account?{' '}
-              <Link href="/login" className="font-heading font-bold text-dark hover:underline uppercase tracking-wider text-[11px] ml-1">
+              <Link href={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"} className="font-heading font-bold text-dark hover:underline uppercase tracking-wider text-[11px] ml-1">
                 Sign In
               </Link>
             </p>
@@ -142,5 +158,17 @@ export default function RegisterPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <main className="w-full bg-white py-20 min-h-[80vh] flex items-center justify-center">
+        <p className="font-heading font-bold text-zinc-300 uppercase tracking-widest text-sm">Loading...</p>
+      </main>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 }

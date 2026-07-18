@@ -5,9 +5,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Magnifier, ShoppingBag, Heart, Bars, Xmark, Person } from '@gravity-ui/icons';
+import { useAuth } from '../../lib/auth-context';
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -174,14 +178,47 @@ export default function Navbar() {
               <Magnifier className="w-5 h-5" />
             </button>
 
-            {/* Login Link */}
-            <Link 
-              href="/login" 
-              className="hidden sm:inline-flex items-center gap-1.5 px-4.5 py-2 border border-zinc-200 hover:border-dark text-dark text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200"
-            >
-              <Person className="w-4 h-4 text-dark" />
-              Login
-            </Link>
+            {/* Dynamic Auth Section */}
+            {user ? (
+              <div className="hidden sm:flex items-center gap-3">
+                <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-500 border border-zinc-200 px-3.5 py-2 rounded-full bg-zinc-50">
+                  {user.name} ({user.role})
+                </span>
+                {user.role === 'admin' && (
+                  <Link 
+                    href="/dashboard" 
+                    className="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-500 hover:border-red-400 text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200"
+                  >
+                    Dashboard
+                  </Link>
+                )}
+                {user.role !== 'admin' && (
+                  <Link 
+                    href="/orders" 
+                    className="inline-flex items-center gap-1.5 px-4 py-2 border border-zinc-200 hover:border-dark text-dark text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200"
+                  >
+                    My Orders
+                  </Link>
+                )}
+                <button 
+                  onClick={() => {
+                    logout();
+                    router.push('/');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2 bg-dark border border-dark text-white hover:bg-transparent hover:text-dark text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200 cursor-pointer"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link 
+                href="/login" 
+                className="hidden sm:inline-flex items-center gap-1.5 px-4.5 py-2 border border-zinc-200 hover:border-dark text-dark text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200"
+              >
+                <Person className="w-4 h-4 text-dark" />
+                Login
+              </Link>
+            )}
 
             {/* Wishlist Link */}
             <Link href="/products?wishlist=true" className="relative text-dark p-2 hover:bg-zinc-100 rounded-full transition">
@@ -342,15 +379,51 @@ export default function Navbar() {
                 Contact Us
               </Link>
 
-              <Link
-                href="/login"
-                onClick={() => setIsMenuOpen(false)}
-                className={`block text-base font-bold py-2 mt-4 text-center border border-zinc-200 hover:border-dark text-dark rounded-xl transition-all duration-200 ${
-                  pathname === '/login' ? 'bg-dark text-white border-dark' : ''
-                }`}
-              >
-                Sign In
-              </Link>
+              {user ? (
+                <div className="pt-4 border-t border-zinc-150 space-y-3">
+                  <div className="px-1 text-xs">
+                    <p className="font-heading font-bold text-zinc-400 uppercase tracking-wider">Logged in as</p>
+                    <p className="font-bold text-dark truncate">{user.name} ({user.role})</p>
+                  </div>
+                  {user.role === 'admin' ? (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="block text-center text-xs font-bold uppercase tracking-wider py-3 border border-red-200 text-red-500 hover:border-red-400 rounded-xl transition duration-200"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/orders"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="block text-center text-xs font-bold uppercase tracking-wider py-3 border border-zinc-200 text-zinc-600 hover:border-dark rounded-xl transition duration-200"
+                    >
+                      My Orders
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      logout();
+                      router.push('/');
+                    }}
+                    className="w-full block text-center text-xs font-bold uppercase tracking-wider py-3 bg-dark text-white hover:bg-[#C9FA75] hover:text-dark rounded-xl transition duration-200 cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`block text-base font-bold py-2 mt-4 text-center border border-zinc-200 hover:border-dark text-dark rounded-xl transition-all duration-200 ${
+                    pathname === '/login' ? 'bg-dark text-white border-dark' : ''
+                  }`}
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
 
             {/* Footer details in menu */}

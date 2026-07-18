@@ -1,19 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '../../lib/auth-context';
 import toast from 'react-hot-toast';
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { login } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email && password) {
-      toast.success('Signed in successfully! (Demo)');
-    } else {
+    if (!email || !password) {
       toast.error('Please fill in all fields.');
+      return;
+    }
+    try {
+      const user = await login(email, password);
+      if (user.role === 'admin') {
+        router.push('/dashboard');
+      } else {
+        router.push(redirect || '/');
+      }
+    } catch (error) {
+      // Error is toasted inside auth.js login
     }
   };
 
@@ -45,6 +60,7 @@ export default function LoginPage() {
               <input
                 id="email"
                 type="email"
+                name="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -66,6 +82,7 @@ export default function LoginPage() {
               <input
                 id="password"
                 type="password"
+                name="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -79,6 +96,7 @@ export default function LoginPage() {
               <input
                 id="remember-me"
                 type="checkbox"
+                name="remember-me"
                 className="w-4 h-4 rounded border-zinc-300 text-dark focus:ring-dark cursor-pointer"
               />
               <label htmlFor="remember-me" className="ml-2 text-xs font-body text-zinc-500 cursor-pointer select-none">
@@ -99,7 +117,7 @@ export default function LoginPage() {
           <div className="mt-8 pt-6 border-t border-zinc-200/60 text-center">
             <p className="text-xs font-body text-zinc-500">
               Don't have an account?{' '}
-              <Link href="/register" className="font-heading font-bold text-dark hover:underline uppercase tracking-wider text-[11px] ml-1">
+              <Link href={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"} className="font-heading font-bold text-dark hover:underline uppercase tracking-wider text-[11px] ml-1">
                 Create Account
               </Link>
             </p>
@@ -108,5 +126,17 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="w-full bg-white py-20 min-h-[80vh] flex items-center justify-center">
+        <p className="font-heading font-bold text-zinc-300 uppercase tracking-widest text-sm">Loading...</p>
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

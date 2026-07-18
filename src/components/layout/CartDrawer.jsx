@@ -3,23 +3,53 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { getCart, updateQuantity, removeFromCart, clearCart } from '../../utils/cart';
+import { useAuth } from '../../lib/auth-context';
+import { apiClient } from '../../lib/apiClient';
 
 export default function CartDrawer() {
   const [isOpen, setIsOpen] = useState(false);
   const [cart, setCart] = useState([]);
+  const { user } = useAuth();
+  const router = useRouter();
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  // Load and sync cart from localStorage
+  // Load and sync cart from backend if logged in, else localStorage
+  const fetchCart = async () => {
+    if (user) {
+      try {
+        const serverCart = await apiClient.get('/api/cart');
+        // Map backend cart format to match client format
+        const mapped = serverCart.map(item => ({
+          id: item.productId,
+          name: item.name,
+          image: item.image,
+          price: item.price,
+          color: item.color,
+          size: item.size,
+          quantity: item.qty,
+        }));
+        setCart(mapped);
+      } catch (err) {
+        console.error('Error fetching server cart:', err);
+        setCart(getCart());
+      }
+    } else {
+      setCart(getCart());
+    }
+  };
+
   useEffect(() => {
-    setCart(getCart());
+    fetchCart();
 
     const handleSync = () => {
-      setCart(getCart());
+      fetchCart();
     };
 
     const handleOpen = () => {
-      setCart(getCart());
+      fetchCart();
       setIsOpen(true);
     };
 
@@ -32,23 +62,78 @@ export default function CartDrawer() {
       window.removeEventListener('open-cart', handleOpen);
       window.removeEventListener('storage', handleSync);
     };
-  }, []);
+  }, [user]);
 
-  const handleQtyChange = (index, delta) => {
-    const updated = updateQuantity(index, delta);
-    setCart(updated);
+  // Sync localStorage cart items to backend upon user login
+  useEffect(() => {
+    const syncLocalCartToServer = async () => {
+      if (user) {
+        const local = getCart();
+        if (local.length > 0) {
+          try {
+            for (const item of local) {
+              await apiClient.post('/api/cart', {
+                productId: item.id,
+                qty: item.quantity,
+                size: item.size,
+                color: item.color
+              });
+            }
+            // Clear local storage cart once synced
+            clearCart();
+            fetchCart();
+            toast.success('Synced your bag with account!');
+          } catch (e) {
+            console.error('Error syncing local cart to server:', e);
+          }
+        }
+      }
+    };
+    syncLocalCartToServer();
+  }, [user]);
+
+  const handleQtyChange = async (index, delta, item) => {
+    if (user) {
+      try {
+        await apiClient.post('/api/cart', {
+          productId: item.id,
+          qty: delta,
+          size: item.size,
+          color: item.color
+        });
+        await fetchCart();
+      } catch (err) {
+        toast.error('Failed to update quantity');
+      }
+    } else {
+      const updated = updateQuantity(index, delta);
+      setCart(updated);
+    }
   };
 
-  const handleRemove = (index, name) => {
-    const updated = removeFromCart(index, name);
-    setCart(updated);
+  const handleRemove = async (index, item) => {
+    if (user) {
+      try {
+        await apiClient.delete(`/api/cart/${item.id}?size=${item.size}&color=${item.color}`);
+        await fetchCart();
+        toast.success(`${item.name} removed`);
+      } catch (err) {
+        toast.error('Failed to remove item');
+      }
+    } else {
+      const updated = removeFromCart(index, item.name);
+      setCart(updated);
+    }
   };
 
   const handleCheckout = () => {
-    toast.success('Thank you for shopping! Checkout simulation complete.');
-    const updated = clearCart();
-    setCart(updated);
     setIsOpen(false);
+    if (!user) {
+      toast.error('Please register or log in to checkout');
+      router.push('/login?redirect=/checkout');
+    } else {
+      router.push('/checkout');
+    }
   };
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -118,7 +203,7 @@ export default function CartDrawer() {
                   <div className="flex justify-between items-center mt-2">
                     <div className="flex items-center border border-zinc-200 rounded-lg p-0.5 bg-zinc-50">
                       <button
-                        onClick={() => handleQtyChange(index, -1)}
+                        onClick={() => handleQtyChange(index, -1, item)}
                         className="w-6 h-6 flex items-center justify-center font-heading font-bold text-xs text-dark hover:bg-zinc-200/50 rounded-md transition cursor-pointer"
                       >
                         -
@@ -127,7 +212,7 @@ export default function CartDrawer() {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => handleQtyChange(index, 1)}
+                        onClick={() => handleQtyChange(index, 1, item)}
                         className="w-6 h-6 flex items-center justify-center font-heading font-bold text-xs text-dark hover:bg-zinc-200/50 rounded-md transition cursor-pointer"
                       >
                         +
@@ -135,7 +220,7 @@ export default function CartDrawer() {
                     </div>
 
                     <button
-                      onClick={() => handleRemove(index, item.name)}
+                      onClick={() => handleRemove(index, item)}
                       className="text-[10px] font-heading font-bold text-red-500 uppercase tracking-wider hover:text-red-600 cursor-pointer"
                     >
                       Remove
@@ -170,9 +255,10 @@ export default function CartDrawer() {
             <div className="space-y-2 pt-2">
               <button
                 onClick={handleCheckout}
-                className="w-full bg-dark text-white hover:bg-[#C9FA75] hover:text-dark py-3.5 rounded-xl font-heading font-bold tracking-widest text-[11px] uppercase transition-colors duration-200 active:scale-99 cursor-pointer flex items-center justify-center gap-2"
+                disabled={checkoutLoading}
+                className="w-full bg-dark text-white hover:bg-[#C9FA75] hover:text-dark py-3.5 rounded-xl font-heading font-bold tracking-widest text-[11px] uppercase transition-colors duration-200 active:scale-99 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Checkout
+                {checkoutLoading ? 'Processing...' : 'Checkout'}
               </button>
               <button
                 onClick={() => setIsOpen(false)}
