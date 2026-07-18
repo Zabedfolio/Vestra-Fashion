@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/apiClient';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 
 export default function DashboardCustomersPage() {
   const queryClient = useQueryClient();
@@ -38,19 +39,42 @@ export default function DashboardCustomersPage() {
     }
   });
 
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (title, message, onConfirmAction) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirmAction();
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const handleRoleToggle = (id, currentRole) => {
     const newRole = currentRole === 'admin' ? 'customer' : 'admin';
-    if (confirm(`Are you sure you want to promote/demote this user to "${newRole}"?`)) {
-      changeRoleMutation.mutate({ id, role: newRole });
-    }
+    showConfirm(
+      'Modify User Role',
+      `Are you sure you want to promote/demote this user to "${newRole}"?`,
+      () => changeRoleMutation.mutate({ id, role: newRole })
+    );
   };
 
   const handleBlockToggle = (id, currentBlocked) => {
     const blockStatus = !currentBlocked;
     const actionText = blockStatus ? 'block' : 'unblock';
-    if (confirm(`Are you sure you want to ${actionText} this user?`)) {
-      toggleBlockMutation.mutate({ id, isBlocked: blockStatus });
-    }
+    showConfirm(
+      blockStatus ? 'Block User' : 'Unblock User',
+      `Are you sure you want to ${actionText} this user?`,
+      () => toggleBlockMutation.mutate({ id, isBlocked: blockStatus })
+    );
   };
 
   return (
@@ -136,6 +160,15 @@ export default function DashboardCustomersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        isDangerous={confirmModal.title.toLowerCase().includes('block')}
+      />
     </div>
   );
 }

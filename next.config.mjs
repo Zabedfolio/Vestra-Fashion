@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  turbopack: {
+    root: '.',
+  },
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;

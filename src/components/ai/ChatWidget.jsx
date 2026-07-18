@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { apiClient } from '../../lib/apiClient';
 
 export default function ChatWidget() {
   const pathname = usePathname();
+  if (pathname?.startsWith('/dashboard')) return null;
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');

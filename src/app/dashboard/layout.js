@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import Image from 'next/image';
+import { ChartBar, TShirt, Box, Person, Star, Gear, House, ArrowRightFromSquare, CircleExclamation } from '@gravity-ui/icons';
 
 export default function DashboardLayout({ children }) {
   const { user, isLoading, logout } = useAuth();
@@ -45,12 +46,14 @@ export default function DashboardLayout({ children }) {
   }
 
   const navLinks = [
-    { name: 'Overview', href: '/dashboard', icon: '📊' },
-    { name: 'Products', href: '/dashboard/products', icon: '👕' },
-    { name: 'Orders', href: '/dashboard/orders', icon: '📦' },
-    { name: 'Customers', href: '/dashboard/customers', icon: '👥' },
-    { name: 'Reviews', href: '/dashboard/reviews', icon: '★' },
-    { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
+    { name: 'Overview', href: '/dashboard', icon: ChartBar },
+    { name: 'Products', href: '/dashboard/products', icon: TShirt },
+    { name: 'Orders', href: '/dashboard/orders', icon: Box },
+    { name: 'Users', href: '/dashboard/users', icon: Person },
+    { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
+    { name: 'Reports', href: '/dashboard/reports', icon: CircleExclamation },
+    { name: 'Settings', href: '/dashboard/settings', icon: Gear },
+    { name: 'Return Home', href: '/', icon: House },
   ];
 
   return (
@@ -65,7 +68,7 @@ export default function DashboardLayout({ children }) {
         <div className="h-16 flex items-center justify-between px-6 border-b border-zinc-850">
           <Link href="/" className="flex items-center gap-2">
             <span className={`font-heading font-black tracking-tight text-xl text-white ${!isSidebarOpen && 'lg:hidden'}`}>
-              VESTRA <span className="text-[#C9FA75]">HQ</span>
+               VESTRA <span className="text-[#C9FA75]">HQ</span>
             </span>
             {!isSidebarOpen && <span className="hidden lg:block text-[#C9FA75] font-black text-lg">V</span>}
           </Link>
@@ -81,6 +84,7 @@ export default function DashboardLayout({ children }) {
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
+            const IconComponent = link.icon;
             return (
               <Link
                 key={link.name}
@@ -91,7 +95,7 @@ export default function DashboardLayout({ children }) {
                     : 'text-zinc-400 hover:bg-zinc-850 hover:text-white'
                 }`}
               >
-                <span className="text-base">{link.icon}</span>
+                <IconComponent className="w-4 h-4 flex-shrink-0" />
                 <span className={!isSidebarOpen ? 'lg:hidden' : ''}>{link.name}</span>
               </Link>
             );
@@ -107,7 +111,7 @@ export default function DashboardLayout({ children }) {
             }}
             className="w-full flex items-center justify-center gap-3 px-4.5 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-950/20 text-xs font-heading font-bold uppercase tracking-wider transition cursor-pointer"
           >
-            <span>🚪</span>
+            <ArrowRightFromSquare className="w-4 h-4 text-red-400 flex-shrink-0" />
             <span className={!isSidebarOpen ? 'lg:hidden' : ''}>Sign Out</span>
           </button>
         </div>

@@ -119,10 +119,11 @@ export default function DashboardOrdersPage() {
                           className="px-3 py-1.5 bg-zinc-50 border border-zinc-200 text-[10px] font-heading font-bold uppercase tracking-wider rounded-lg outline-none cursor-pointer focus:border-dark"
                         >
                           <option value="pending">Pending</option>
-                          <option value="paid">Paid</option>
-                          <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
                           <option value="cancelled">Cancelled</option>
+                          {order.status !== 'pending' && order.status !== 'delivered' && order.status !== 'cancelled' && (
+                            <option value={order.status}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</option>
+                          )}
                         </select>
                       </td>
                     </tr>

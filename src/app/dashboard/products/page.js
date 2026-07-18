@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/apiClient';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { EllipsisVertical } from '@gravity-ui/icons';
 import CaptionGenerator from '../../../components/ai/CaptionGenerator';
+import ConfirmationModal from '../../../components/ui/ConfirmationModal';
+import TagInput from '../../../components/dashboard/TagInput';
 
 export default function DashboardProductsPage() {
   const queryClient = useQueryClient();
@@ -26,10 +30,10 @@ export default function DashboardProductsPage() {
     price: '',
     oldPrice: '',
     stock: '25',
-    image: '/images/products/men/Classic Cotton Panjabi.png', // default placeholder
+    image: '',
     description: '',
-    colors: 'White, Navy, Olive',
-    sizes: 'S, M, L, XL',
+    colors: ['White', 'Navy', 'Olive'],
+    sizes: ['S', 'M', 'L', 'XL'],
   });
 
   // Fetch products
@@ -97,11 +101,55 @@ export default function DashboardProductsPage() {
       price: '',
       oldPrice: '',
       stock: '25',
-      image: '/images/products/men/Classic Cotton Panjabi.png',
+      image: '',
       description: '',
-      colors: 'White, Navy, Olive',
-      sizes: 'S, M, L, XL',
+      colors: ['White', 'Navy', 'Olive'],
+      sizes: ['S', 'M', 'L', 'XL'],
     });
+  };
+  
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+    if (!apiKey) {
+      toast.error('ImgBB API key is not configured in .env file.');
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading('Uploading image to ImgBB...');
+
+    try {
+      const uploadData = new FormData();
+      uploadData.append('image', file);
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: uploadData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image to ImgBB');
+      }
+
+      const resData = await response.json();
+      if (resData.success) {
+        const imageUrl = resData.data.url;
+        setFormData((prev) => ({ ...prev, image: imageUrl }));
+        toast.success('Image uploaded successfully!', { id: toastId });
+      } else {
+        throw new Error(resData.error?.message || 'Failed to upload image');
+      }
+    } catch (err) {
+      console.error('Image upload error:', err);
+      toast.error(err.message || 'Image upload failed', { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleEditClick = (product) => {
@@ -116,8 +164,8 @@ export default function DashboardProductsPage() {
       stock: (product.stock ?? 25).toString(),
       image: product.image,
       description: product.description || '',
-      colors: product.colors ? product.colors.join(', ') : '',
-      sizes: product.sizes ? product.sizes.join(', ') : '',
+      colors: product.colors && product.colors.length ? product.colors : [],
+      sizes: product.sizes && product.sizes.length ? product.sizes : [],
     });
     setIsEditModalOpen(true);
   };
@@ -130,8 +178,8 @@ export default function DashboardProductsPage() {
       price: parseFloat(formData.price),
       oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : undefined,
       stock: parseInt(formData.stock),
-      colors: formData.colors.split(',').map(c => c.trim()).filter(Boolean),
-      sizes: formData.sizes.split(',').map(s => s.trim()).filter(Boolean),
+      colors: formData.colors.filter(Boolean),
+      sizes: formData.sizes.filter(Boolean),
     };
 
     if (isEdit) {
@@ -149,10 +197,59 @@ export default function DashboardProductsPage() {
     }));
   };
 
-  const handleDeleteClick = (id, name) => {
-    if (confirm(`Are you sure you want to delete "${name}"?`)) {
-      deleteProductMutation.mutate(id);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const dropdownButtonRefs = useRef({});
+  const [isAiContentModalOpen, setIsAiContentModalOpen] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState('');
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [contentProduct, setContentProduct] = useState(null);
+
+  const handleGenerateContent = async (product) => {
+    setContentProduct(product);
+    setIsAiContentModalOpen(true);
+    setIsGeneratingContent(true);
+    setGeneratedContent('');
+
+    try {
+      const data = await apiClient.post('/api/ai/generate-text-caption', {
+        name: product.name,
+        colors: product.colors,
+        sizes: product.sizes,
+        description: product.description,
+      });
+      setGeneratedContent(data.caption);
+    } catch (err) {
+      toast.error('Failed to generate AI caption: ' + err.message);
+      setGeneratedContent('Error generating content. Please check your Anthropic API Key configuration.');
+    } finally {
+      setIsGeneratingContent(false);
     }
+  };
+
+  const handleCopyContent = () => {
+    if (!generatedContent) return;
+    navigator.clipboard.writeText(generatedContent);
+    toast.success('Caption copied to clipboard!');
+  };
+
+  const handleDeleteClick = (id, name) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Product',
+      message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteProductMutation.mutate(id);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   return (
@@ -232,19 +329,74 @@ export default function DashboardProductsPage() {
                       <td className="px-6 py-3.5 font-semibold text-zinc-500">
                         {product.stock ?? 25} units
                       </td>
-                      <td className="px-6 py-3.5 text-right space-x-2">
-                        <button
-                          onClick={() => handleEditClick(product)}
-                          className="px-3 py-1.5 border border-zinc-200 hover:border-dark text-dark rounded-lg font-heading font-bold uppercase tracking-wider text-[9px] transition cursor-pointer"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(product._id, product.name)}
-                          className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-lg font-heading font-bold uppercase tracking-wider text-[9px] transition cursor-pointer"
-                        >
-                          Delete
-                        </button>
+                      <td className="px-6 py-3.5 text-right relative">
+                        <div className="inline-block relative">
+                          <button
+                            type="button"
+                            ref={(el) => { dropdownButtonRefs.current[product._id] = el; }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (activeDropdownId === product._id) {
+                                setActiveDropdownId(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setDropdownPos({
+                                  top: rect.bottom + 4,
+                                  left: rect.right - 176, // 176px = w-44
+                                });
+                                setActiveDropdownId(product._id);
+                              }
+                            }}
+                            className="p-1.5 hover:bg-zinc-100 rounded-lg text-zinc-500 hover:text-dark transition cursor-pointer"
+                          >
+                            <EllipsisVertical className="w-5 h-5" />
+                          </button>
+                          
+                          {activeDropdownId === product._id && createPortal(
+                            <>
+                              <div 
+                                className="fixed inset-0 z-40 cursor-default" 
+                                onClick={() => setActiveDropdownId(null)} 
+                              />
+                              <div
+                                style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left }}
+                                className="w-44 bg-white border border-zinc-150 rounded-xl shadow-lg py-1.5 z-50 animate-scale-up text-left"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    handleEditClick(product);
+                                  }}
+                                  className="w-full px-4 py-2.5 text-[10px] font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    handleGenerateContent(product);
+                                  }}
+                                  className="w-full px-4 py-2.5 text-[10px] font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2 border-t border-zinc-100"
+                                >
+                                  Generate Content
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    handleDeleteClick(product._id, product.name);
+                                  }}
+                                  className="w-full px-4 py-2.5 text-[10px] font-heading font-bold text-red-500 hover:bg-red-50 hover:text-red-600 rounded-b-xl uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2 border-t border-zinc-100"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>,
+                            document.body
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -396,40 +548,72 @@ export default function DashboardProductsPage() {
                 </div>
 
                 {/* Colors */}
-                <div>
-                  <label htmlFor="add-colors" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Colors (comma separated)</label>
-                  <input
-                    id="add-colors"
-                    type="text"
-                    value={formData.colors}
-                    onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
+                <div className="sm:col-span-2">
+                  <TagInput
+                    label="Colors"
+                    values={formData.colors}
+                    onChange={(newColors) => setFormData({ ...formData, colors: newColors })}
+                    placeholder="e.g. White, Navy, Olive"
                   />
                 </div>
 
                 {/* Sizes */}
-                <div>
-                  <label htmlFor="add-sizes" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Sizes (comma separated)</label>
-                  <input
-                    id="add-sizes"
-                    type="text"
-                    value={formData.sizes}
-                    onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
+                <div className="sm:col-span-2">
+                  <TagInput
+                    label="Sizes"
+                    values={formData.sizes}
+                    onChange={(newSizes) => setFormData({ ...formData, sizes: newSizes })}
+                    placeholder="e.g. S, M, L, XL"
                   />
                 </div>
 
                 {/* Image Path */}
-                <div className="sm:col-span-2">
-                  <label htmlFor="add-image" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Image URL / Path</label>
-                  <input
-                    id="add-image"
-                    type="text"
-                    required
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
-                  />
+                <div className="sm:col-span-2 space-y-3">
+                  <label className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-1">Product Image</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    {/* Thumbnail preview */}
+                    <div className="relative aspect-[3/4] w-full max-w-[120px] rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200 flex items-center justify-center">
+                      {formData.image ? (
+                        <img
+                          src={formData.image}
+                          alt="Product preview"
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-zinc-400 font-heading font-bold uppercase">No Image</span>
+                      )}
+                    </div>
+                    {/* File upload drag/click zone */}
+                    <div className="md:col-span-2 space-y-2">
+                      <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-4 hover:border-dark transition-all duration-200 flex flex-col items-center justify-center cursor-pointer bg-zinc-50/50">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <svg className="w-5 h-5 text-zinc-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-500">
+                          {isUploading ? 'Uploading...' : 'Choose file or drag here'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[9px] text-zinc-400 font-body">Or paste a direct image URL:</span>
+                        <input
+                          type="text"
+                          required
+                          value={formData.image}
+                          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                          placeholder="https://..."
+                          className="w-full px-3 py-2 bg-white border border-zinc-200 focus:border-dark rounded-lg text-xs font-body outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Description */}
@@ -579,40 +763,72 @@ export default function DashboardProductsPage() {
                 </div>
 
                 {/* Colors */}
-                <div>
-                  <label htmlFor="edit-colors" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Colors (comma separated)</label>
-                  <input
-                    id="edit-colors"
-                    type="text"
-                    value={formData.colors}
-                    onChange={(e) => setFormData({ ...formData, colors: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
+                <div className="sm:col-span-2">
+                  <TagInput
+                    label="Colors"
+                    values={formData.colors}
+                    onChange={(newColors) => setFormData({ ...formData, colors: newColors })}
+                    placeholder="e.g. White, Navy, Olive"
                   />
                 </div>
 
                 {/* Sizes */}
-                <div>
-                  <label htmlFor="edit-sizes" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Sizes (comma separated)</label>
-                  <input
-                    id="edit-sizes"
-                    type="text"
-                    value={formData.sizes}
-                    onChange={(e) => setFormData({ ...formData, sizes: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
+                <div className="sm:col-span-2">
+                  <TagInput
+                    label="Sizes"
+                    values={formData.sizes}
+                    onChange={(newSizes) => setFormData({ ...formData, sizes: newSizes })}
+                    placeholder="e.g. S, M, L, XL"
                   />
                 </div>
 
                 {/* Image Path */}
-                <div className="sm:col-span-2">
-                  <label htmlFor="edit-image" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Image URL / Path</label>
-                  <input
-                    id="edit-image"
-                    type="text"
-                    required
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
-                  />
+                <div className="sm:col-span-2 space-y-3">
+                  <label className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-1">Product Image</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    {/* Thumbnail preview */}
+                    <div className="relative aspect-[3/4] w-full max-w-[120px] rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200 flex items-center justify-center">
+                      {formData.image ? (
+                        <img
+                          src={formData.image}
+                          alt="Product preview"
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-zinc-400 font-heading font-bold uppercase">No Image</span>
+                      )}
+                    </div>
+                    {/* File upload drag/click zone */}
+                    <div className="md:col-span-2 space-y-2">
+                      <div className="relative border-2 border-dashed border-zinc-200 rounded-xl p-4 hover:border-dark transition-all duration-200 flex flex-col items-center justify-center cursor-pointer bg-zinc-50/50">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <svg className="w-5 h-5 text-zinc-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-500">
+                          {isUploading ? 'Uploading...' : 'Choose file or drag here'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[9px] text-zinc-400 font-body">Or paste a direct image URL:</span>
+                        <input
+                          type="text"
+                          required
+                          value={formData.image}
+                          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                          placeholder="https://..."
+                          className="w-full px-3 py-2 bg-white border border-zinc-200 focus:border-dark rounded-lg text-xs font-body outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Description */}
@@ -647,6 +863,73 @@ export default function DashboardProductsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        isDangerous={true}
+      />
+
+      {/* AI Generated Content Modal */}
+      {isAiContentModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-4 flex items-center justify-center animate-fade-in">
+          <div className="bg-white border border-zinc-150 rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative animate-scale-up text-dark font-body">
+            {/* Close Button */}
+            <button 
+              onClick={() => setIsAiContentModalOpen(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-dark text-lg cursor-pointer transition-colors"
+            >
+              ✕
+            </button>
+
+            <h3 className="font-heading font-black text-sm uppercase tracking-wider text-dark mb-2">
+              AI Caption Generator
+            </h3>
+            
+            {contentProduct && (
+              <p className="text-[10px] text-zinc-400 font-heading font-bold uppercase tracking-wider mb-6">
+                Product: <span className="text-dark">{contentProduct.name}</span>
+              </p>
+            )}
+
+            {/* Content Container */}
+            <div className="bg-zinc-50 border border-zinc-150 rounded-xl p-4 min-h-[160px] flex flex-col justify-between font-body text-xs relative">
+              {isGeneratingContent ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 rounded-xl">
+                  <div className="w-8 h-8 border-4 border-dark border-t-transparent rounded-full animate-spin mb-3" />
+                  <p className="font-heading font-bold text-zinc-400 uppercase text-[9px] tracking-wider animate-pulse">Generating premium caption...</p>
+                </div>
+              ) : null}
+              
+              <div className="whitespace-pre-wrap leading-relaxed text-zinc-750 max-h-[240px] overflow-y-auto pr-1">
+                {generatedContent || 'Ready to generate.'}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => setIsAiContentModalOpen(false)}
+                className="px-5 py-3 border border-zinc-200 text-dark rounded-xl text-[10px] font-heading font-bold uppercase tracking-wider hover:bg-zinc-50 transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={isGeneratingContent || !generatedContent}
+                onClick={handleCopyContent}
+                className="px-6 py-3 bg-dark text-white hover:bg-[#C9FA75] hover:text-dark disabled:opacity-50 rounded-xl text-[10px] font-heading font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5"
+              >
+                Copy Caption
+              </button>
+            </div>
           </div>
         </div>
       )}

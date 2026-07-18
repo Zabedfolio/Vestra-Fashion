@@ -1,15 +1,21 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/dashboard')) return null;
   const currentYear = new Date().getFullYear();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSubscribe = (e) => {
     e.preventDefault();
-    alert("Thank you for subscribing to VESTRA news!");
+    toast.success("Subscribed successfully!");
+    setIsModalOpen(true);
   };
 
   const footerLinks = {
@@ -34,6 +40,7 @@ export default function Footer() {
   };
 
   return (
+    <>
     <footer className="bg-[#111111] text-zinc-400 font-body py-16 border-t border-zinc-800 mt-auto">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
@@ -124,5 +131,34 @@ export default function Footer() {
 
       </div>
     </footer>
+
+    {isModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="bg-white border border-zinc-150 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl relative animate-scale-up text-dark font-body">
+          <button 
+            onClick={() => setIsModalOpen(false)}
+            className="absolute top-4 right-4 text-zinc-400 hover:text-dark text-lg cursor-pointer"
+          >
+            ✕
+          </button>
+          <div className="w-12 h-12 bg-zinc-50 border border-zinc-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-xl">📩</span>
+          </div>
+          <h3 className="font-heading font-black text-lg uppercase tracking-tight text-dark mb-2">
+            Subscribed
+          </h3>
+          <p className="font-body text-zinc-500 text-xs leading-relaxed mb-6">
+            Thank you for subscribing to VESTRA news! You will now receive exclusive collection updates, lookbook arrivals, and community offers.
+          </p>
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="w-full bg-dark text-white hover:bg-[#C9FA75] hover:text-dark py-3 rounded-xl font-heading font-bold text-xs uppercase tracking-widest transition duration-200 cursor-pointer"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

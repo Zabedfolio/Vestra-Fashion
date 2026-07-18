@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
 import ProductCard from '../../components/ui/ProductCard';
+import { ChevronDown } from '@gravity-ui/icons';
 
 // Inner component — safe to use useSearchParams() here
 function ProductsContent() {
@@ -111,20 +112,23 @@ function ProductsContent() {
           {/* Sort Dropdown & Price Range Slider */}
           <div className="flex flex-wrap items-center gap-4 max-w-md w-full">
             {/* Sort Select */}
-            <div className="flex-1 min-w-[120px]">
+            <div className="flex-1 min-w-[120px] relative">
               <select
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 text-xs font-heading font-bold uppercase tracking-wider rounded-xl outline-none cursor-pointer text-zinc-600 focus:border-dark"
+                className="w-full appearance-none pr-10 px-4 py-3 bg-zinc-50 border border-zinc-200 text-xs font-heading font-bold uppercase tracking-wider rounded-xl outline-none cursor-pointer text-zinc-600 focus:border-dark"
               >
                 <option value="">Sort By</option>
                 <option value="priceAsc">Price: Low to High</option>
                 <option value="priceDesc">Price: High to Low</option>
                 <option value="ratingDesc">Popularity (Rating)</option>
               </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-400">
+                <ChevronDown className="w-4 h-4" />
+              </div>
             </div>
 
             {/* Price range */}

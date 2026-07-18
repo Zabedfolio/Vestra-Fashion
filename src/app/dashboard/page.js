@@ -1,15 +1,49 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/apiClient';
 import Link from 'next/link';
+import { CircleDollar, Box, Person, TShirt } from '@gravity-ui/icons';
+
+// Sparkline graph SVG renderer
+function Sparkline({ data, color = '#111111' }) {
+  if (!data || data.length < 2) return null;
+  const width = 120;
+  const height = 30;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  
+  const points = data.map((val, index) => {
+    const x = (index / (data.length - 1)) * width;
+    const y = height - ((val - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  });
+
+  const pathData = `M ${points.join(' L ')}`;
+  
+  return (
+    <svg className="w-24 h-6 opacity-85 flex-shrink-0" viewBox={`0 0 ${width} ${height}`}>
+      <path
+        d={pathData}
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function DashboardOverviewPage() {
   const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => apiClient.get('/api/platform-stats'),
   });
+
+  const [salesRange, setSalesRange] = useState('7days'); // 'today' | '7days' | '30days' | 'all'
 
   if (isLoading) {
     return (
@@ -34,6 +68,19 @@ export default function DashboardOverviewPage() {
     );
   }
 
+  let activeRevenueValue = stats.totalRevenue;
+  let salesRangeLabel = 'Lifetime Sell';
+  if (salesRange === 'today') {
+    activeRevenueValue = stats.revenueToday ?? 0;
+    salesRangeLabel = "Today's Sell";
+  } else if (salesRange === '7days') {
+    activeRevenueValue = stats.revenue7Days ?? 0;
+    salesRangeLabel = "7 Days Sell";
+  } else if (salesRange === '30days') {
+    activeRevenueValue = stats.revenue30Days ?? 0;
+    salesRangeLabel = "Monthly Sell";
+  }
+
   // Find max value in chart data for layout calculation
   const maxRevenueVal = stats.chartData?.length > 0
     ? Math.max(...stats.chartData.map(c => c.revenue))
@@ -41,62 +88,111 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Title */}
-      <div>
-        <h1 className="font-heading font-black text-3xl text-dark uppercase tracking-tight leading-none mb-1">Overview</h1>
-        <p className="font-body text-zinc-500 text-sm">Real-time metrics, product inventories, and sales trends.</p>
+      {/* Title & Range Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-black text-3xl text-dark uppercase tracking-tight leading-none mb-1">Overview</h1>
+          <p className="font-body text-zinc-500 text-sm">Real-time metrics, product inventories, and sales trends.</p>
+        </div>
+
+        <div className="flex bg-zinc-100 p-1 rounded-xl border border-zinc-200 text-[10px] font-heading font-bold uppercase tracking-wider">
+          <button
+            onClick={() => setSalesRange('today')}
+            className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${salesRange === 'today' ? 'bg-white text-dark shadow-sm' : 'text-zinc-500 hover:text-dark'}`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setSalesRange('7days')}
+            className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${salesRange === '7days' ? 'bg-white text-dark shadow-sm' : 'text-zinc-500 hover:text-dark'}`}
+          >
+            7 Days
+          </button>
+          <button
+            onClick={() => setSalesRange('30days')}
+            className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${salesRange === '30days' ? 'bg-white text-dark shadow-sm' : 'text-zinc-500 hover:text-dark'}`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setSalesRange('all')}
+            className={`px-3 py-2 rounded-lg transition-colors cursor-pointer ${salesRange === 'all' ? 'bg-white text-dark shadow-sm' : 'text-zinc-500 hover:text-dark'}`}
+          >
+            Lifetime
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Revenue */}
-        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Total Revenue</span>
-            <span className="text-lg">💰</span>
+        {/* Total Revenue / Sales */}
+        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Revenue ({salesRangeLabel})</span>
+            <CircleDollar className="w-5 h-5 text-dark" />
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-heading font-black text-dark">৳{stats.totalRevenue.toLocaleString()}</h3>
-            <p className="text-[10px] text-zinc-400 font-body uppercase mt-1">Life-time Stripe & Sandbox checkout sales</p>
+          <div className="flex items-end justify-between mt-2">
+            <div>
+              <h3 className="text-2xl font-heading font-black text-dark">৳{activeRevenueValue.toLocaleString()}</h3>
+              <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">Stripe & Sandbox sales</p>
+            </div>
+            {stats.sparklines?.revenue && (
+              <Sparkline data={stats.sparklines.revenue} color="#111111" />
+            )}
           </div>
         </div>
 
         {/* Total Orders */}
-        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
+        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Total Orders</span>
-            <span className="text-lg">📦</span>
+            <Box className="w-5 h-5 text-dark" />
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-heading font-black text-dark">{stats.ordersCount}</h3>
-            <p className="text-[10px] text-emerald-500 font-heading font-bold uppercase mt-1">+{stats.ordersToday} orders today</p>
+          <div className="flex items-end justify-between mt-2">
+            <div>
+              <h3 className="text-2xl font-heading font-black text-dark">{stats.ordersCount}</h3>
+              <p className="text-[9px] text-emerald-500 font-heading font-bold uppercase mt-1">+{stats.ordersToday} orders today</p>
+            </div>
+            {stats.sparklines?.orders && (
+              <Sparkline data={stats.sparklines.orders} color="#10B981" />
+            )}
           </div>
         </div>
 
         {/* Active Customers */}
-        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
+        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Customers</span>
-            <span className="text-lg">👥</span>
+            <Person className="w-5 h-5 text-dark" />
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-heading font-black text-dark">{stats.usersCount}</h3>
-            <p className="text-[10px] text-zinc-400 font-body uppercase mt-1">Registered customer user profiles</p>
+          <div className="flex items-end justify-between mt-2">
+            <div>
+              <h3 className="text-2xl font-heading font-black text-dark">{stats.usersCount}</h3>
+              <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">Registered customer accounts</p>
+            </div>
+            {stats.sparklines?.users && (
+              <Sparkline data={stats.sparklines.users} color="#6366F1" />
+            )}
           </div>
         </div>
 
         {/* Products Count */}
-        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start">
+        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="flex justify-between items-start mb-2">
             <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Catalog Products</span>
-            <span className="text-lg">👕</span>
+            <TShirt className="w-5 h-5 text-dark" />
           </div>
-          <div className="mt-4">
-            <h3 className="text-2xl font-heading font-black text-dark">{stats.productsCount}</h3>
-            {stats.lowStockCount > 0 ? (
-              <p className="text-[10px] text-red-500 font-heading font-bold uppercase mt-1">{stats.lowStockCount} items in low stock</p>
-            ) : (
-              <p className="text-[10px] text-zinc-400 font-body uppercase mt-1">All items fully in stock</p>
+          <div className="flex items-end justify-between mt-2">
+            <div>
+              <h3 className="text-2xl font-heading font-black text-dark">{stats.productsCount}</h3>
+              {stats.lowStockCount > 0 ? (
+                <p className="text-[9px] text-red-500 font-heading font-bold uppercase mt-1">{stats.lowStockCount} items in low stock</p>
+              ) : (
+                <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">All items in stock</p>
+              )}
+            </div>
+            {stats.sparklines?.products && (
+              <Sparkline data={stats.sparklines.products} color="#F59E0B" />
             )}
           </div>
         </div>

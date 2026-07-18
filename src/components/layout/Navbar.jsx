@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Magnifier, ShoppingBag, Heart, Bars, Xmark, Person } from '@gravity-ui/icons';
+import { Magnifier, ShoppingBag, Heart, Bars, Xmark, Person, ChevronDown, ChartBar, Box, ArrowRightFromSquare, CircleExclamation } from '@gravity-ui/icons';
 import { useAuth } from '../../lib/auth-context';
 
 export default function Navbar() {
   const pathname = usePathname();
+  if (pathname?.startsWith('/dashboard')) return null;
   const router = useRouter();
   const { user, logout } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -180,35 +181,82 @@ export default function Navbar() {
 
             {/* Dynamic Auth Section */}
             {user ? (
-              <div className="hidden sm:flex items-center gap-3">
-                <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-500 border border-zinc-200 px-3.5 py-2 rounded-full bg-zinc-50">
-                  {user.name} ({user.role})
-                </span>
-                {user.role === 'admin' && (
-                  <Link 
-                    href="/dashboard" 
-                    className="inline-flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-500 hover:border-red-400 text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200"
-                  >
-                    Dashboard
-                  </Link>
-                )}
-                {user.role !== 'admin' && (
-                  <Link 
-                    href="/orders" 
-                    className="inline-flex items-center gap-1.5 px-4 py-2 border border-zinc-200 hover:border-dark text-dark text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200"
-                  >
-                    My Orders
-                  </Link>
-                )}
-                <button 
-                  onClick={() => {
-                    logout();
-                    router.push('/');
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4.5 py-2 bg-dark border border-dark text-white hover:bg-transparent hover:text-dark text-xs font-heading font-bold uppercase tracking-wider rounded-full transition duration-200 cursor-pointer"
+              <div className="hidden sm:flex items-center relative">
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-1.5 text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-500 border border-zinc-200 px-4 py-2.5 rounded-full bg-zinc-50 hover:bg-zinc-100 hover:text-dark transition duration-200 whitespace-nowrap cursor-pointer"
                 >
-                  Logout
+                  <span>{user.name}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-400 transition-transform duration-200" style={{ transform: isProfileOpen ? 'rotate(180deg)' : 'none' }} />
                 </button>
+
+                {isProfileOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 cursor-default" 
+                      onClick={() => setIsProfileOpen(false)} 
+                    />
+                    <div className="absolute right-0 top-full mt-2.5 w-48 bg-white border border-zinc-150 rounded-2xl shadow-xl py-2 z-50 animate-scale-up">
+                      <div className="px-4 py-2.5 border-b border-zinc-100 mb-1">
+                        <p className="text-[9px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Signed in as</p>
+                        <p className="text-xs font-semibold text-dark truncate mt-0.5">{user.name}</p>
+                        <p className="text-[10px] text-zinc-400 capitalize mt-0.5">{user.role}</p>
+                      </div>
+
+                      {user.role === 'admin' ? (
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-red-500 hover:bg-zinc-50 uppercase tracking-wider transition-colors"
+                        >
+                          <ChartBar className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
+                          <span>Dashboard</span>
+                        </Link>
+                      ) : (
+                        <>
+                          <Link
+                            href="/orders"
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors"
+                          >
+                            <Box className="w-3.5 h-3.5 flex-shrink-0 text-dark" />
+                            <span>My Orders</span>
+                          </Link>
+
+                          <Link
+                            href="/products?wishlist=true"
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors"
+                          >
+                            <Heart className="w-3.5 h-3.5 flex-shrink-0 text-dark" />
+                            <span>Wishlist</span>
+                          </Link>
+
+                          <Link
+                            href="/reports"
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors"
+                          >
+                            <CircleExclamation className="w-3.5 h-3.5 flex-shrink-0 text-dark" />
+                            <span>Dispute Reports</span>
+                          </Link>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          logout();
+                          router.push('/');
+                        }}
+                        className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-zinc-650 hover:text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors cursor-pointer border-t border-zinc-100 mt-1"
+                      >
+                        <ArrowRightFromSquare className="w-3.5 h-3.5 flex-shrink-0 text-zinc-500" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <Link 
@@ -221,27 +269,31 @@ export default function Navbar() {
             )}
 
             {/* Wishlist Link */}
-            <Link href="/products?wishlist=true" className="relative text-dark p-2 hover:bg-zinc-100 rounded-full transition">
-              <Heart className="w-5 h-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-dark rounded-full">
-                  {wishlistCount}
-                </span>
-              )}
-            </Link>
+            {(!user || user.role !== 'admin') && (
+              <Link href="/products?wishlist=true" className="relative text-dark p-2 hover:bg-zinc-100 rounded-full transition">
+                <Heart className="w-5 h-5" />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-dark rounded-full">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {/* Shopping Cart Button */}
-            <button
-              onClick={() => window.dispatchEvent(new Event('open-cart'))}
-              className="relative text-dark p-2 hover:bg-zinc-100 rounded-full transition cursor-pointer"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {totalItems > 0 && (
-                <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-dark bg-primary rounded-full">
-                  {totalItems}
-                </span>
-              )}
-            </button>
+            {(!user || user.role !== 'admin') && (
+              <button
+                onClick={() => window.dispatchEvent(new Event('open-cart'))}
+                className="relative text-dark p-2 hover:bg-zinc-100 rounded-full transition cursor-pointer"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                {totalItems > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-dark bg-primary rounded-full">
+                    {totalItems}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </header>

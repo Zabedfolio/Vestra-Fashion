@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../../lib/apiClient';
 import { useAuth } from '../../../lib/auth-context';
+import { Star, StarFill } from '@gravity-ui/icons';
 import ProductCard from '../../../components/ui/ProductCard';
 import ProductUnavailable from '../../../components/ui/ProductUnavailable';
 import { addToCart } from '../../../utils/cart';
@@ -33,6 +34,18 @@ export default function ProductDetailPage() {
     queryFn: () => apiClient.get(`/api/reviews?productId=${productId}`),
     enabled: !!productId,
   });
+
+  // Fetch Customer Orders to validate eligibility
+  const { data: customerOrders = [] } = useQuery({
+    queryKey: ['orders'],
+    queryFn: () => apiClient.get('/api/orders'),
+    enabled: !!user,
+  });
+
+  const hasPurchasedAndDelivered = customerOrders.some(order => 
+    order.status === 'delivered' && 
+    order.items?.some(item => item.productId === productId)
+  );
 
   // 3. Fetch AI Recommendations from API
   const { data: aiRecsData, isLoading: isRecsLoading } = useQuery({
@@ -65,12 +78,10 @@ export default function ProductDetailPage() {
   const submitReviewMutation = useMutation({
     mutationFn: (newReview) => apiClient.post('/api/reviews', newReview),
     onSuccess: () => {
-      toast.success('Thank you for your review!');
+      toast.success('Review submitted! It will appear after admin approval.', { duration: 5000 });
       setReviewComment('');
       setReviewRating(5);
-      // Refetch reviews and product data to update the rating and count
-      queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
-      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      // Don't invalidate reviews query — review is pending, won't show until approved
     },
     onError: (err) => {
       toast.error(err.message || 'Failed to submit review');
@@ -189,11 +200,15 @@ export default function ProductDetailPage() {
               {/* Rating stars indicator */}
               <div className="flex items-center gap-1.5 mt-3">
                 <div className="flex text-dark">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className={i < Math.round(product.rating || 4.5) ? 'text-[#C9FA75]' : 'text-zinc-200'}>
-                      ★
-                    </span>
-                  ))}
+                  {[...Array(5)].map((_, i) => {
+                    const Icon = i < Math.round(product.rating || 4.5) ? StarFill : Star;
+                    return (
+                      <Icon 
+                        key={i} 
+                        className={`w-3.5 h-3.5 ${i < Math.round(product.rating || 4.5) ? 'text-[#C9FA75]' : 'text-zinc-200'}`} 
+                      />
+                    );
+                  })}
                 </div>
                 <span className="text-xs font-heading font-bold text-zinc-500">
                   {product.rating || '4.5'} ({product.reviewCount || 0} reviews)
@@ -382,11 +397,15 @@ export default function ProductDetailPage() {
                 <span className="text-4xl font-heading font-black text-dark">{product.rating || '4.5'}</span>
                 <div>
                   <div className="flex text-[#C9FA75] text-sm">
-                    {[...Array(5)].map((_, i) => (
-                      <span key={i} className={i < Math.round(product.rating || 4.5) ? 'text-[#C9FA75]' : 'text-zinc-200'}>
-                        ★
-                      </span>
-                    ))}
+                    {[...Array(5)].map((_, i) => {
+                      const Icon = i < Math.round(product.rating || 4.5) ? StarFill : Star;
+                      return (
+                        <Icon 
+                          key={i} 
+                          className={`w-3.5 h-3.5 ${i < Math.round(product.rating || 4.5) ? 'text-[#C9FA75]' : 'text-zinc-200'}`} 
+                        />
+                      );
+                    })}
                   </div>
                   <p className="text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mt-0.5">Based on {reviews.length} reviews</p>
                 </div>
@@ -398,46 +417,66 @@ export default function ProductDetailPage() {
               <h3 className="font-heading font-bold text-xs uppercase tracking-wider text-dark mb-4">Write a Review</h3>
               
               {user ? (
-                <form onSubmit={handleReviewSubmit} className="space-y-4">
-                  {/* Stars select */}
-                  <div>
-                    <label className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Rating</label>
-                    <div className="flex gap-1.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setReviewRating(star)}
-                          className="text-2xl outline-none focus:outline-none transition-transform hover:scale-110 cursor-pointer"
-                        >
-                          <span className={star <= reviewRating ? 'text-[#C9FA75]' : 'text-zinc-200'}>★</span>
-                        </button>
-                      ))}
+                hasPurchasedAndDelivered ? (
+                  <form onSubmit={handleReviewSubmit} className="space-y-4">
+                    {/* Stars select */}
+                    <div>
+                      <label className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Rating</label>
+                      <div className="flex gap-1.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const Icon = star <= reviewRating ? StarFill : Star;
+                          return (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setReviewRating(star)}
+                              className="text-2xl outline-none focus:outline-none transition-transform hover:scale-110 cursor-pointer"
+                            >
+                              <Icon className={`w-6 h-6 ${star <= reviewRating ? 'text-[#C9FA75]' : 'text-zinc-200'}`} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Comment */}
+                    <div>
+                      <label htmlFor="comment" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Your Review</label>
+                      <textarea
+                        id="comment"
+                        required
+                        rows={4}
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Share your thoughts on design, fit, and comfort..."
+                        className="w-full p-4 bg-white border border-zinc-200 focus:border-dark rounded-xl text-sm font-body outline-none transition-colors duration-200 resize-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submitReviewMutation.isPending}
+                      className="w-full bg-dark text-white hover:bg-[#C9FA75] hover:text-dark py-3 rounded-xl font-heading font-bold tracking-widest text-[10px] uppercase transition-colors duration-200 cursor-pointer disabled:opacity-50"
+                    >
+                      {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="text-center py-4 px-2 space-y-2">
+                    <p className="font-heading font-bold text-[10px] text-zinc-400 uppercase tracking-wider">Review Locked</p>
+                    <p className="font-body text-xs text-zinc-550 leading-relaxed">
+                      You can only review this product after purchasing it and having the order successfully delivered.
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        href="/orders"
+                        className="inline-block border border-zinc-250 hover:bg-dark hover:text-white hover:border-dark px-5 py-2 rounded-lg text-[9px] font-heading font-bold uppercase tracking-wider transition cursor-pointer text-dark bg-white"
+                      >
+                        Check My Orders
+                      </Link>
                     </div>
                   </div>
-
-                  {/* Comment */}
-                  <div>
-                    <label htmlFor="comment" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Your Review</label>
-                    <textarea
-                      id="comment"
-                      required
-                      rows={4}
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      placeholder="Share your thoughts on design, fit, and comfort..."
-                      className="w-full p-4 bg-white border border-zinc-200 focus:border-dark rounded-xl text-sm font-body outline-none transition-colors duration-200 resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={submitReviewMutation.isPending}
-                    className="w-full bg-dark text-white hover:bg-[#C9FA75] hover:text-dark py-3 rounded-xl font-heading font-bold tracking-widest text-[10px] uppercase transition-colors duration-200 cursor-pointer disabled:opacity-50"
-                  >
-                    {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
-                  </button>
-                </form>
+                )
               ) : (
                 <div className="text-center py-6">
                   <p className="font-body text-xs text-zinc-500 mb-4">You must be signed in to leave a review.</p>
@@ -469,11 +508,15 @@ export default function ProductDetailPage() {
                       </div>
                       
                       <div className="flex text-[#C9FA75] text-xs mb-3">
-                        {[...Array(5)].map((_, i) => (
-                          <span key={i} className={i < review.rating ? 'text-[#C9FA75]' : 'text-zinc-200'}>
-                            ★
-                          </span>
-                        ))}
+                        {[...Array(5)].map((_, i) => {
+                          const Icon = i < review.rating ? StarFill : Star;
+                          return (
+                            <Icon 
+                              key={i} 
+                              className={`w-3.5 h-3.5 ${i < review.rating ? 'text-[#C9FA75]' : 'text-zinc-200'}`} 
+                            />
+                          );
+                        })}
                       </div>
 
                       <p className="font-body text-xs sm:text-sm text-zinc-600 leading-relaxed">
