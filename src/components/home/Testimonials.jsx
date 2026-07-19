@@ -2,9 +2,48 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { testimonials } from '../../data/testimonials';
+import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../lib/apiClient';
+import { Star, StarFill } from '@gravity-ui/icons';
+import { testimonials as staticTestimonials } from '../../data/testimonials';
 
 export default function Testimonials() {
+  // Fetch approved product reviews from the database
+  const { data: dbReviews = [], isLoading } = useQuery({
+    queryKey: ['public-testimonials-reviews'],
+    queryFn: () => apiClient.get('/api/reviews?approved=true'),
+  });
+
+  // If loading, show placeholder skeletons
+  if (isLoading) {
+    return (
+      <section className="w-full bg-white py-24 border-t border-zinc-100">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16 animate-pulse">
+            <div className="h-4 bg-zinc-200 rounded w-1/4 mx-auto mb-3" />
+            <div className="h-10 bg-zinc-200 rounded w-3/4 mx-auto mb-4" />
+            <div className="h-4 bg-zinc-200 rounded w-2/3 mx-auto" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-zinc-50 border border-zinc-100 rounded-2xl p-8 h-64 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Use DB reviews if available; fallback to static data if no reviews exist in DB
+  const items = dbReviews.length > 0 ? dbReviews : staticTestimonials.map((t, idx) => ({
+    _id: `static-${idx}`,
+    userName: t.name,
+    rating: t.rating,
+    reviewText: t.content,
+    // Static items do not have real products, so they won't render the product cards
+  }));
+
   return (
     <section className="w-full bg-white py-24 border-t border-zinc-100">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -22,61 +61,77 @@ export default function Testimonials() {
           </p>
         </div>
 
-        {/* Testimonials Grid / Mobile Scroll */}
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-6 overflow-x-auto sm:overflow-x-visible pb-6 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory scrollbar-hide">
-          {testimonials.map((item) => (
+        {/* Testimonials Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {items.map((item) => (
             <div 
-              key={item.id} 
-              className="flex-shrink-0 w-[85%] sm:w-full bg-zinc-50 rounded-2xl p-6 sm:p-8 flex flex-col justify-between snap-start border border-zinc-100/50 hover:border-zinc-200 transition-all duration-300 group"
+              key={item._id} 
+              className="bg-zinc-50 rounded-2xl p-6 sm:p-8 flex flex-col justify-between border border-zinc-100/50 hover:border-zinc-200 transition-all duration-300 group"
             >
               <div>
-                {/* SVG Stars */}
-                <div className="flex gap-1 mb-6">
-                  {[...Array(5)].map((_, i) => (
-                    <svg 
-                      key={i} 
-                      className={`w-4 h-4 ${i < Math.floor(item.rating) ? 'text-[#C9FA75] fill-[#C9FA75]' : 'text-zinc-200 fill-zinc-200'}`} 
-                      viewBox="0 0 20 20" 
-                      fill="currentColor"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
+                {/* Gravity UI Star Rating */}
+                <div className="flex gap-1 mb-5">
+                  {[...Array(5)].map((_, i) => {
+                    const Icon = i < Math.floor(item.rating) ? StarFill : Star;
+                    return (
+                      <Icon 
+                        key={i} 
+                        className={`w-3.5 h-3.5 ${
+                          i < Math.floor(item.rating) 
+                            ? 'text-[#C9FA75]' 
+                            : 'text-zinc-200'
+                        }`} 
+                      />
+                    );
+                  })}
                 </div>
 
-                {/* Content */}
-                <p className="font-body text-zinc-600 italic text-sm sm:text-base leading-relaxed mb-8">
-                  "{item.content}"
+                {/* Review Text content */}
+                <p className="font-body text-zinc-650 italic text-xs sm:text-sm leading-relaxed mb-6">
+                  "{item.reviewText || item.comment || 'Outstanding product design!'}"
                 </p>
               </div>
 
-              {/* User Profile */}
-              <div className="flex items-center gap-3.5 pt-4 border-t border-zinc-200/40">
-                <div className="relative w-11 h-11 rounded-full overflow-hidden bg-zinc-200 flex-shrink-0">
-                  <Image 
-                    src={item.avatar} 
-                    alt={item.name} 
-                    fill 
-                    sizes="44px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    // If avatar is missing, let it fall back gracefully
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                  {/* Initials Fallback */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-300 text-dark font-heading font-bold text-xs uppercase z-[-1]">
-                    {item.name.substring(0, 2)}
+              {/* Bottom profile and product card */}
+              <div className="space-y-4 pt-4 border-t border-zinc-150/60">
+                {/* User Profile */}
+                <div className="flex items-center gap-3">
+                  <div className="relative w-8 h-8 rounded-full overflow-hidden bg-zinc-200 flex-shrink-0 flex items-center justify-center font-heading font-bold text-[10px] text-dark uppercase">
+                    {(item.userName || 'VB').substring(0, 2)}
+                  </div>
+                  <div>
+                    <h4 className="font-heading font-bold text-dark text-xs uppercase tracking-wide leading-none">
+                      {item.userName || 'Verified Buyer'}
+                    </h4>
+                    <p className="text-[9px] font-mono text-zinc-400 mt-1">Verified Purchase</p>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-heading font-bold text-dark text-sm sm:text-base leading-none">
-                    {item.name}
-                  </h4>
-                  <p className="font-body text-zinc-400 text-xs mt-1">
-                    {item.role}
-                  </p>
-                </div>
+
+                {/* Enriched Product Reference Card */}
+                {item.productName && (
+                  <Link
+                    href={`/products/${item.productId}`}
+                    className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-zinc-150/70 hover:border-dark transition-colors duration-150"
+                  >
+                    {item.productImage && (
+                      <div className="relative w-8 h-10 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0 border border-zinc-200">
+                        <Image 
+                          src={item.productImage} 
+                          alt={item.productName} 
+                          fill 
+                          className="object-cover" 
+                          sizes="32px" 
+                        />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[8px] font-heading font-bold uppercase tracking-wider text-zinc-400">Review for</p>
+                      <h5 className="font-heading font-bold text-dark text-[10px] truncate uppercase mt-0.5">
+                        {item.productName}
+                      </h5>
+                    </div>
+                  </Link>
+                )}
               </div>
 
             </div>

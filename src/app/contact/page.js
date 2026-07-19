@@ -1,22 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { apiClient } from '../../lib/apiClient';
+import { useAuth } from '../../lib/auth-context';
 
 export default function ContactPage() {
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+    }
+  }, [user]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (name && email && subject && message) {
-      toast.success('Message sent successfully! We will contact you soon (Demo).');
-      setName('');
-      setEmail('');
-      setSubject('');
-      setMessage('');
+      setSubmitting(true);
+      const toastId = toast.loading('Sending message...');
+      try {
+        await apiClient.post('/api/contacts', { name, email, phone, subject, message });
+        toast.success('Message sent successfully! We will get back to you soon.', { id: toastId });
+        setName(user?.name || '');
+        setEmail(user?.email || '');
+        setPhone(user?.phone || '');
+        setSubject('');
+        setMessage('');
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to send message. Please try again.', { id: toastId });
+      } finally {
+        setSubmitting(false);
+      }
     } else {
       toast.error('Please fill in all fields.');
     }
@@ -49,7 +73,7 @@ export default function ContactPage() {
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <div>
                   <label htmlFor="name" className="block text-xs font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">
                     Your Name
@@ -75,6 +99,19 @@ export default function ContactPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
+                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-sm font-body outline-none transition-colors duration-200"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="phone" className="block text-xs font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                    Mobile Number
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+8801XXXXXXXXX"
                     className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-sm font-body outline-none transition-colors duration-200"
                   />
                 </div>
@@ -112,12 +149,15 @@ export default function ContactPage() {
 
               <button
                 type="submit"
-                className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-dark text-white hover:bg-[#C9FA75] hover:text-dark font-heading font-bold text-xs tracking-widest uppercase rounded-xl transition-all duration-200 active:scale-95 shadow-sm cursor-pointer"
+                disabled={submitting}
+                className="inline-flex items-center gap-2.5 px-8 py-3.5 bg-dark text-white hover:bg-[#C9FA75] hover:text-dark font-heading font-bold text-xs tracking-widest uppercase rounded-xl transition-all duration-200 active:scale-95 shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Send Message
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
+                {submitting ? 'Sending...' : 'Send Message'}
+                {!submitting && (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                )}
               </button>
             </form>
           </div>

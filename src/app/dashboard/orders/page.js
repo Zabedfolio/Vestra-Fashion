@@ -12,6 +12,7 @@ export default function DashboardOrdersPage() {
   const { data: orders = [], isLoading, isError } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: () => apiClient.get('/api/orders?all=true'),
+    refetchInterval: 5000,
   });
 
   // Modify Order Status Mutation

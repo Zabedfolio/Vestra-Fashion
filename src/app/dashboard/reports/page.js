@@ -15,6 +15,7 @@ export default function DashboardReportsPage() {
   const { data: reports = [], isLoading, isError } = useQuery({
     queryKey: ['admin-reports-list'],
     queryFn: () => apiClient.get('/api/reports'),
+    refetchInterval: 5000,
   });
 
   // Update report status mutation

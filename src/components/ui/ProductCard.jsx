@@ -1,14 +1,85 @@
-'use client';
-
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../lib/auth-context';
+import { apiClient } from '../../lib/apiClient';
+import toast from 'react-hot-toast';
 
 export default function ProductCard({ product }) {
+  const { user } = useAuth();
   const [wishlisted, setWishlisted] = useState(false);
 
   const pid = product._id || product.id;
   const firstColor = product.colors?.[0] ?? null;
+
+  useEffect(() => {
+    const checkWishlist = async () => {
+      if (user) {
+        try {
+          const list = await apiClient.get('/api/wishlist');
+          const isSaved = list.some(item => item.productId === pid);
+          setWishlisted(isSaved);
+        } catch (e) {
+          console.error('Error fetching card wishlist state:', e);
+        }
+      } else {
+        try {
+          const stored = localStorage.getItem('vestra_wishlist');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setWishlisted(parsed.includes(pid));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    checkWishlist();
+
+    window.addEventListener('wishlist-change', checkWishlist);
+    return () => {
+      window.removeEventListener('wishlist-change', checkWishlist);
+    };
+  }, [user, pid]);
+
+  const handleWishlistToggle = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (user) {
+      const toastId = toast.loading(wishlisted ? 'Removing...' : 'Adding to wishlist...');
+      try {
+        if (wishlisted) {
+          await apiClient.delete(`/api/wishlist/${pid}`);
+          toast.success('Removed from wishlist', { id: toastId });
+        } else {
+          await apiClient.post('/api/wishlist', { productId: pid });
+          toast.success('Saved to wishlist', { id: toastId });
+        }
+        window.dispatchEvent(new Event('wishlist-change'));
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to update wishlist', { id: toastId });
+      }
+    } else {
+      try {
+        const stored = localStorage.getItem('vestra_wishlist');
+        let items = stored ? JSON.parse(stored) : [];
+        if (wishlisted) {
+          items = items.filter(id => id !== pid);
+          toast.success('Removed from wishlist');
+        } else {
+          items.push(pid);
+          toast.success('Saved to wishlist');
+        }
+        localStorage.setItem('vestra_wishlist', JSON.stringify(items));
+        window.dispatchEvent(new Event('wishlist-change'));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
   return (
     <div className="group flex flex-col bg-white">
@@ -46,12 +117,9 @@ export default function ProductCard({ product }) {
           {/* Wishlist */}
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              setWishlisted((prev) => !prev);
-            }}
+            onClick={handleWishlistToggle}
             aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors duration-200 active:scale-95"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-colors duration-200 active:scale-95 cursor-pointer"
           >
             <svg
               className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-200 ${wishlisted ? 'text-[#C9FA75] fill-[#C9FA75]' : 'text-[#111111] fill-none'}`}

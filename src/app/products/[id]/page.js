@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -60,6 +60,72 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+
+  useEffect(() => {
+    const verifyWishlist = async () => {
+      if (user) {
+        try {
+          const list = await apiClient.get('/api/wishlist');
+          const isSaved = list.some(item => item.productId === productId);
+          setIsWishlisted(isSaved);
+        } catch (e) {
+          console.error('Error verifying wishlist state:', e);
+        }
+      } else {
+        try {
+          const stored = localStorage.getItem('vestra_wishlist');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setIsWishlisted(parsed.includes(productId));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+
+    verifyWishlist();
+
+    window.addEventListener('wishlist-change', verifyWishlist);
+    return () => {
+      window.removeEventListener('wishlist-change', verifyWishlist);
+    };
+  }, [user, productId]);
+
+  const handleWishlistToggle = async () => {
+    if (user) {
+      const toastId = toast.loading(isWishlisted ? 'Removing...' : 'Adding to wishlist...');
+      try {
+        if (isWishlisted) {
+          await apiClient.delete(`/api/wishlist/${productId}`);
+          toast.success('Removed from wishlist', { id: toastId });
+        } else {
+          await apiClient.post('/api/wishlist', { productId: productId });
+          toast.success('Saved to wishlist', { id: toastId });
+        }
+        window.dispatchEvent(new Event('wishlist-change'));
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to update wishlist', { id: toastId });
+      }
+    } else {
+      try {
+        const stored = localStorage.getItem('vestra_wishlist');
+        let items = stored ? JSON.parse(stored) : [];
+        if (isWishlisted) {
+          items = items.filter(x => x !== productId);
+          toast.success('Removed from wishlist');
+        } else {
+          items.push(productId);
+          toast.success('Saved to wishlist');
+        }
+        localStorage.setItem('vestra_wishlist', JSON.stringify(items));
+        window.dispatchEvent(new Event('wishlist-change'));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
   // Review form state
   const [reviewRating, setReviewRating] = useState(5);
@@ -305,14 +371,7 @@ export default function ProductDetailPage() {
                 {/* Wishlist */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsWishlisted(!isWishlisted);
-                    if (!isWishlisted) {
-                      toast.success('Added to wishlist!');
-                    } else {
-                      toast('Removed from wishlist');
-                    }
-                  }}
+                  onClick={handleWishlistToggle}
                   className="w-12 h-12 border border-zinc-200 rounded-xl flex items-center justify-center bg-zinc-50 hover:bg-zinc-100 transition cursor-pointer"
                 >
                   <svg
@@ -332,7 +391,7 @@ export default function ProductDetailPage() {
               {/* Add to Cart */}
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const mappedProduct = {
                     id: product._id,
                     name: product.name,
@@ -340,7 +399,28 @@ export default function ProductDetailPage() {
                     image: product.image,
                     price: product.price,
                   };
-                  addToCart(mappedProduct, quantity, selectedColor, selectedSize);
+
+                  if (user) {
+                    const toastId = toast.loading('Adding item to bag...');
+                    try {
+                      await apiClient.post('/api/cart', {
+                        productId: product._id,
+                        qty: quantity,
+                        size: selectedSize,
+                        color: selectedColor
+                      });
+                      toast.success(`Added ${quantity} x ${product.name} to bag!`, { id: toastId });
+                      // Trigger layout sync
+                      window.dispatchEvent(new Event('cart-change'));
+                      window.dispatchEvent(new Event('open-cart'));
+                    } catch (err) {
+                      console.error(err);
+                      toast.error('Failed to add item to bag', { id: toastId });
+                    }
+                  } else {
+                    addToCart(mappedProduct, quantity, selectedColor, selectedSize);
+                    window.dispatchEvent(new Event('open-cart'));
+                  }
                 }}
                 className="w-full bg-dark text-white hover:bg-[#C9FA75] hover:text-dark py-4 rounded-xl font-heading font-bold tracking-widest text-xs uppercase transition-colors duration-200 cursor-pointer flex items-center justify-center gap-2"
               >

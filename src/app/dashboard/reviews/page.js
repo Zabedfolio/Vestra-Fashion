@@ -39,12 +39,14 @@ export default function DashboardReviewsPage() {
   const { data: pendingReviews = [], isLoading: isPendingLoading } = useQuery({
     queryKey: ['admin-reviews', 'pending'],
     queryFn: () => apiClient.get('/api/reviews?status=pending'),
+    refetchInterval: 5000,
   });
 
   // Fetch approved reviews
   const { data: approvedReviews = [], isLoading: isApprovedLoading } = useQuery({
     queryKey: ['admin-reviews', 'approved'],
     queryFn: () => apiClient.get('/api/reviews?status=approved'),
+    refetchInterval: 5000,
   });
 
   // Approve Review Mutation

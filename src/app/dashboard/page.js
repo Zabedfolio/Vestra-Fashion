@@ -41,6 +41,7 @@ export default function DashboardOverviewPage() {
   const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => apiClient.get('/api/platform-stats'),
+    refetchInterval: 5000,
   });
 
   const [salesRange, setSalesRange] = useState('7days'); // 'today' | '7days' | '30days' | 'all'
@@ -69,22 +70,37 @@ export default function DashboardOverviewPage() {
   }
 
   let activeRevenueValue = stats.totalRevenue;
-  let salesRangeLabel = 'Lifetime Sell';
+  let activeProfitValue = stats.totalProfit ?? 0;
+  let salesRangeLabel = 'Lifetime';
   if (salesRange === 'today') {
     activeRevenueValue = stats.revenueToday ?? 0;
-    salesRangeLabel = "Today's Sell";
+    activeProfitValue = stats.profitToday ?? 0;
+    salesRangeLabel = "Today";
   } else if (salesRange === '7days') {
     activeRevenueValue = stats.revenue7Days ?? 0;
-    salesRangeLabel = "7 Days Sell";
+    activeProfitValue = stats.profit7Days ?? 0;
+    salesRangeLabel = "7 Days";
   } else if (salesRange === '30days') {
     activeRevenueValue = stats.revenue30Days ?? 0;
-    salesRangeLabel = "Monthly Sell";
+    activeProfitValue = stats.profit30Days ?? 0;
+    salesRangeLabel = "Monthly";
   }
 
-  // Find max value in chart data for layout calculation
-  const maxRevenueVal = stats.chartData?.length > 0
-    ? Math.max(...stats.chartData.map(c => c.revenue))
+  // Find max value in chart data for dual chart scale
+  const maxChartVal = stats.chartData?.length > 0
+    ? Math.max(...stats.chartData.map(c => Math.max(c.revenue, c.profit)))
     : 1000;
+
+  // Resolve range key for dynamic sparklines
+  const activeSparklinesRange = salesRange === 'today' ? 'today' : salesRange === '7days' ? 'sevenDays' : salesRange === '30days' ? 'thirtyDays' : 'all';
+
+  // Category chart color mapping
+  const categoryColors = {
+    'Men': 'bg-dark',
+    'Women': 'bg-indigo-600',
+    'Kids': 'bg-amber-500',
+    'Accessories': 'bg-[#C9FA75]'
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -134,10 +150,29 @@ export default function DashboardOverviewPage() {
           <div className="flex items-end justify-between mt-2">
             <div>
               <h3 className="text-2xl font-heading font-black text-dark">৳{activeRevenueValue.toLocaleString()}</h3>
-              <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">Stripe & Sandbox sales</p>
+              <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">Total sales receipts</p>
             </div>
-            {stats.sparklines?.revenue && (
-              <Sparkline data={stats.sparklines.revenue} color="#111111" />
+            {stats.sparklines?.[activeSparklinesRange]?.revenue && (
+              <Sparkline data={stats.sparklines[activeSparklinesRange].revenue} color="#111111" />
+            )}
+          </div>
+        </div>
+
+        {/* Total Profit */}
+        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Net Profit ({salesRangeLabel})</span>
+            <CircleDollar className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div className="flex items-end justify-between mt-2">
+            <div>
+              <h3 className="text-2xl font-heading font-black text-emerald-600">৳{activeProfitValue.toLocaleString()}</h3>
+              <p className="text-[9px] text-emerald-500 font-heading font-bold uppercase mt-1">
+                {activeRevenueValue > 0 ? `${Math.round((activeProfitValue / activeRevenueValue) * 100)}% profit margin` : '0% margin'}
+              </p>
+            </div>
+            {stats.sparklines?.[activeSparklinesRange]?.profit && (
+              <Sparkline data={stats.sparklines[activeSparklinesRange].profit} color="#10B981" />
             )}
           </div>
         </div>
@@ -153,25 +188,8 @@ export default function DashboardOverviewPage() {
               <h3 className="text-2xl font-heading font-black text-dark">{stats.ordersCount}</h3>
               <p className="text-[9px] text-emerald-500 font-heading font-bold uppercase mt-1">+{stats.ordersToday} orders today</p>
             </div>
-            {stats.sparklines?.orders && (
-              <Sparkline data={stats.sparklines.orders} color="#10B981" />
-            )}
-          </div>
-        </div>
-
-        {/* Active Customers */}
-        <div className="bg-white border border-zinc-150 p-6 rounded-2xl shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-[10px] font-heading font-bold text-zinc-400 uppercase tracking-wider">Customers</span>
-            <Person className="w-5 h-5 text-dark" />
-          </div>
-          <div className="flex items-end justify-between mt-2">
-            <div>
-              <h3 className="text-2xl font-heading font-black text-dark">{stats.usersCount}</h3>
-              <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">Registered customer accounts</p>
-            </div>
-            {stats.sparklines?.users && (
-              <Sparkline data={stats.sparklines.users} color="#6366F1" />
+            {stats.sparklines?.[activeSparklinesRange]?.orders && (
+              <Sparkline data={stats.sparklines[activeSparklinesRange].orders} color="#6366F1" />
             )}
           </div>
         </div>
@@ -191,45 +209,107 @@ export default function DashboardOverviewPage() {
                 <p className="text-[9px] text-zinc-450 font-body uppercase mt-1">All items in stock</p>
               )}
             </div>
-            {stats.sparklines?.products && (
-              <Sparkline data={stats.sparklines.products} color="#F59E0B" />
+            {stats.sparklines?.[activeSparklinesRange]?.products && (
+              <Sparkline data={stats.sparklines[activeSparklinesRange].products} color="#F59E0B" />
             )}
           </div>
         </div>
       </div>
 
-      {/* Chart Section */}
-      <div className="bg-white border border-zinc-150 rounded-2xl p-6 shadow-sm">
-        <h3 className="font-heading font-bold text-xs uppercase tracking-wider text-dark mb-6">Weekly Revenue Trend</h3>
+      {/* Advanced Charting Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {stats.chartData && stats.chartData.length > 0 ? (
-          <div className="h-64 flex items-end gap-3 sm:gap-6 pt-4">
-            {stats.chartData.map((data, index) => {
-              const heightPercent = maxRevenueVal > 0 ? (data.revenue / maxRevenueVal) * 80 + 10 : 10;
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center h-full justify-end group">
-                  {/* Tooltip */}
-                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-dark text-[#C9FA75] text-[10px] font-heading font-bold tracking-wide px-2 py-1 rounded mb-2 shadow-sm font-mono z-10">
-                    ৳{data.revenue.toLocaleString()}
-                  </span>
-                  {/* Bar */}
-                  <div
-                    style={{ height: `${heightPercent}%` }}
-                    className="w-full bg-[#111111] group-hover:bg-[#C9FA75] rounded-t-lg transition-all duration-300 relative"
-                  />
-                  {/* Label */}
-                  <span className="text-[9px] font-heading font-bold uppercase tracking-wider text-zinc-400 mt-3 truncate w-full text-center">
-                    {data.date}
-                  </span>
-                </div>
-              );
-            })}
+        {/* Weekly Revenue & Profit Trend (2 columns on large screens) */}
+        <div className="bg-white border border-zinc-150 rounded-2xl p-6 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-heading font-bold text-xs uppercase tracking-wider text-dark">Weekly Income & Profit</h3>
+            <div className="flex items-center gap-4 text-[9px] font-heading font-bold uppercase tracking-wider">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-[#111111] rounded-sm" />
+                <span className="text-zinc-500">Revenue</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-sm" />
+                <span className="text-zinc-500">Profit</span>
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="h-64 flex items-center justify-center border border-dashed border-zinc-200 rounded-xl">
-            <p className="font-heading font-bold text-xs text-zinc-400 uppercase">Insufficient transaction data to display trend</p>
+          
+          {stats.chartData && stats.chartData.length > 0 ? (
+            <div className="h-64 flex items-end gap-3 sm:gap-6 pt-4">
+              {stats.chartData.map((data, index) => {
+                const revenueHeight = maxChartVal > 0 ? (data.revenue / maxChartVal) * 80 + 10 : 10;
+                const profitHeight = maxChartVal > 0 ? (data.profit / maxChartVal) * 80 + 10 : 10;
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center h-full justify-end group">
+                    
+                    {/* Tooltip */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-dark text-white text-[9px] font-heading font-bold px-2 py-1.5 rounded mb-2 shadow-lg font-mono z-10 space-y-0.5 text-center shrink-0 min-w-[70px]">
+                      <p className="text-zinc-400">REV: ৳{Math.round(data.revenue).toLocaleString()}</p>
+                      <p className="text-emerald-400 border-t border-zinc-800 pt-0.5 mt-0.5">PRF: ৳{Math.round(data.profit).toLocaleString()}</p>
+                    </div>
+
+                    {/* Bars Grid */}
+                    <div className="w-full flex items-end gap-1 h-full max-h-[85%] justify-center">
+                      <div
+                        style={{ height: `${revenueHeight}%` }}
+                        className="w-1/2 bg-[#111111] group-hover:opacity-85 rounded-t-sm transition-all duration-300"
+                      />
+                      <div
+                        style={{ height: `${profitHeight}%` }}
+                        className="w-1/2 bg-emerald-500 group-hover:opacity-85 rounded-t-sm transition-all duration-300"
+                      />
+                    </div>
+
+                    {/* Label */}
+                    <span className="text-[9px] font-heading font-bold uppercase tracking-wider text-zinc-400 mt-3 truncate w-full text-center">
+                      {data.date}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center border border-dashed border-zinc-200 rounded-xl">
+              <p className="font-heading font-bold text-xs text-zinc-400 uppercase">Insufficient transaction data to display trend</p>
+            </div>
+          )}
+        </div>
+
+        {/* Category Breakdown (1 column) */}
+        <div className="bg-white border border-zinc-150 rounded-2xl p-6 shadow-sm">
+          <h3 className="font-heading font-bold text-xs uppercase tracking-wider text-dark mb-6">Category Sales Distribution</h3>
+          
+          <div className="space-y-5">
+            {stats.categoryBreakdown && stats.categoryBreakdown.length > 0 ? (
+              stats.categoryBreakdown.map((cat, index) => {
+                const colorClass = categoryColors[cat.name] || 'bg-zinc-400';
+                return (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-heading font-bold text-[10px] uppercase tracking-wider text-zinc-650">{cat.name}</span>
+                      <span className="font-mono font-bold text-dark">
+                        ৳{cat.value.toLocaleString()} <span className="text-[10px] text-zinc-400 normal-case font-normal">({cat.percentage}%)</span>
+                      </span>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
+                      <div
+                        style={{ width: `${cat.percentage}%` }}
+                        className={`h-full ${colorClass} rounded-full transition-all duration-500`}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="h-60 flex items-center justify-center border border-dashed border-zinc-200 rounded-xl">
+                <p className="font-heading font-bold text-xs text-zinc-400 uppercase">No category sales recorded</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
       </div>
 
       {/* Recent Orders Section */}

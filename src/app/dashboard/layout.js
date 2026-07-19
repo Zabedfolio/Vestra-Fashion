@@ -5,13 +5,22 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth-context';
 import Image from 'next/image';
-import { ChartBar, TShirt, Box, Person, Star, Gear, House, ArrowRightFromSquare, CircleExclamation } from '@gravity-ui/icons';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../lib/apiClient';
+import { ChartBar, TShirt, Box, Person, Star, Gear, House, ArrowRightFromSquare, CircleExclamation, Comment, Envelope, StarFill } from '@gravity-ui/icons';
 
 export default function DashboardLayout({ children }) {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const { data: stats } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: () => apiClient.get('/api/platform-stats'),
+    enabled: !!user && user.role === 'admin',
+    refetchInterval: 15000,
+  });
 
   if (isLoading) {
     return (
@@ -50,14 +59,33 @@ export default function DashboardLayout({ children }) {
     { name: 'Products', href: '/dashboard/products', icon: TShirt },
     { name: 'Orders', href: '/dashboard/orders', icon: Box },
     { name: 'Users', href: '/dashboard/users', icon: Person },
+    { name: 'Chats', href: '/dashboard/chats', icon: Comment },
     { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
     { name: 'Reports', href: '/dashboard/reports', icon: CircleExclamation },
+    { name: 'Contacts', href: '/dashboard/contacts', icon: Envelope },
+    { name: 'Wishlists', href: '/dashboard/wishlists', icon: StarFill },
     { name: 'Settings', href: '/dashboard/settings', icon: Gear },
     { name: 'Return Home', href: '/', icon: House },
   ];
 
+  const getBadgeCount = (name) => {
+    if (!stats) return 0;
+    if (name === 'Orders') return stats.pendingOrdersCount ?? 0;
+    if (name === 'Reviews') return stats.pendingReviewsCount ?? 0;
+    if (name === 'Reports') return stats.pendingReportsCount ?? 0;
+    return 0;
+  };
+
   return (
     <div className="flex h-screen bg-zinc-50 font-body text-dark overflow-hidden">
+      {/* Mobile sidebar backdrop overlay */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-dark/40 backdrop-blur-sm z-20 lg:hidden transition-opacity duration-300 cursor-pointer"
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={`bg-dark text-white w-64 flex flex-col flex-shrink-0 transition-all duration-300 z-30 border-r border-zinc-850 ${
@@ -81,22 +109,38 @@ export default function DashboardLayout({ children }) {
         </div>
 
         {/* Navigation items */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto font-heading">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             const IconComponent = link.icon;
+            const badgeCount = getBadgeCount(link.name);
             return (
               <Link
                 key={link.name}
                 href={link.href}
-                className={`flex items-center gap-4.5 px-4.5 py-3.5 rounded-xl text-xs font-heading font-bold uppercase tracking-wider transition-all duration-200 ${
+                onClick={() => {
+                  if (window.innerWidth < 1024) {
+                    setIsSidebarOpen(false);
+                  }
+                }}
+                className={`flex items-center px-4.5 py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-200 ${
                   isActive
                     ? 'bg-[#C9FA75] text-dark shadow-sm'
                     : 'text-zinc-400 hover:bg-zinc-850 hover:text-white'
                 }`}
               >
-                <IconComponent className="w-4 h-4 flex-shrink-0" />
-                <span className={!isSidebarOpen ? 'lg:hidden' : ''}>{link.name}</span>
+                <div className="relative flex items-center justify-center">
+                  <IconComponent className="w-4 h-4 flex-shrink-0" />
+                  {badgeCount > 0 && !isSidebarOpen && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#C9FA75] rounded-full border border-dark animate-pulse" />
+                  )}
+                </div>
+                <span className={`ml-3.5 ${!isSidebarOpen ? 'lg:hidden' : ''}`}>{link.name}</span>
+                {badgeCount > 0 && isSidebarOpen && (
+                  <span className={`ml-auto font-mono text-[9px] font-black px-2 py-0.5 rounded-full ${isActive ? 'bg-dark text-white' : 'bg-[#C9FA75] text-dark'}`}>
+                    {badgeCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -136,9 +180,10 @@ export default function DashboardLayout({ children }) {
           <div className="flex items-center gap-4 text-xs font-heading font-bold">
             <Link
               href="/"
-              className="px-4.5 py-2 border border-zinc-200 hover:border-dark rounded-full text-dark transition duration-200"
+              className="px-3.5 sm:px-4.5 py-2 border border-zinc-200 hover:border-dark rounded-full text-dark transition duration-200 flex items-center gap-1.5"
             >
-              ← View Store
+              <House className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">View Store</span>
             </Link>
             <div className="flex items-center gap-2">
               <span className="w-8 h-8 rounded-full bg-dark text-white font-heading font-black text-xs flex items-center justify-center border border-zinc-300 shadow-sm uppercase">

@@ -3,6 +3,7 @@ import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import ToasterProvider from "../components/ui/ToasterProvider";
 import CartDrawer from "../components/layout/CartDrawer";
+import WishlistDrawer from "../components/layout/WishlistDrawer";
 import QueryProvider from "../components/ui/QueryProvider";
 import { AuthProvider } from "../lib/auth-context";
 import ChatWidget from "../components/ai/ChatWidget";
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
           <AuthProvider>
             <ToasterProvider />
             <CartDrawer />
+            <WishlistDrawer />
             <Navbar />
             <main className="flex-grow flex flex-col">
               {children}

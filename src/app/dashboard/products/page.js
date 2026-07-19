@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/apiClient';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-import { EllipsisVertical } from '@gravity-ui/icons';
+import { EllipsisVertical, Magnifier, Plus } from '@gravity-ui/icons';
 import CaptionGenerator from '../../../components/ai/CaptionGenerator';
 import ConfirmationModal from '../../../components/ui/ConfirmationModal';
 import TagInput from '../../../components/dashboard/TagInput';
@@ -25,15 +25,16 @@ export default function DashboardProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     brand: 'VESTRA',
-    category: 'Men',
+    category: '',
     subCategory: '',
     price: '',
+    buyingPrice: '',
     oldPrice: '',
-    stock: '25',
+    stock: '',
     image: '',
     description: '',
-    colors: ['White', 'Navy', 'Olive'],
-    sizes: ['S', 'M', 'L', 'XL'],
+    colors: [],
+    sizes: [],
   });
 
   // Fetch products
@@ -99,12 +100,13 @@ export default function DashboardProductsPage() {
       category: 'Men',
       subCategory: '',
       price: '',
+      buyingPrice: '',
       oldPrice: '',
-      stock: '25',
+      stock: '',
       image: '',
       description: '',
-      colors: ['White', 'Navy', 'Olive'],
-      sizes: ['S', 'M', 'L', 'XL'],
+      colors: [],
+      sizes: [],
     });
   };
   
@@ -160,6 +162,7 @@ export default function DashboardProductsPage() {
       category: product.category || 'Men',
       subCategory: product.subCategory || '',
       price: product.price.toString(),
+      buyingPrice: product.buyingPrice ? product.buyingPrice.toString() : '',
       oldPrice: product.oldPrice ? product.oldPrice.toString() : '',
       stock: (product.stock ?? 25).toString(),
       image: product.image,
@@ -176,6 +179,7 @@ export default function DashboardProductsPage() {
     const formattedPayload = {
       ...formData,
       price: parseFloat(formData.price),
+      buyingPrice: formData.buyingPrice ? parseFloat(formData.buyingPrice) : undefined,
       oldPrice: formData.oldPrice ? parseFloat(formData.oldPrice) : undefined,
       stock: parseInt(formData.stock),
       colors: formData.colors.filter(Boolean),
@@ -267,13 +271,13 @@ export default function DashboardProductsPage() {
           }}
           className="bg-dark hover:bg-[#C9FA75] text-white hover:text-dark px-6 py-3 rounded-xl font-heading font-bold tracking-widest text-[10px] uppercase transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
         >
-          <span>＋</span> Add Product
+          <Plus className="w-3.5 h-3.5" /> Add Product
         </button>
       </div>
 
       {/* Search Input */}
       <div className="max-w-md bg-white border border-zinc-150 rounded-xl px-4 py-1.5 flex items-center">
-        <span className="text-zinc-400 text-sm mr-2.5">🔍</span>
+        <Magnifier className="w-4 h-4 text-zinc-400 mr-2.5 flex-shrink-0" />
         <input
           type="text"
           placeholder="Search catalog products..."
@@ -306,7 +310,8 @@ export default function DashboardProductsPage() {
                   <th className="px-6 py-4.5">Product Name</th>
                   <th className="px-6 py-4.5">Brand</th>
                   <th className="px-6 py-4.5">Category</th>
-                  <th className="px-6 py-4.5">Price</th>
+                  <th className="px-6 py-4.5">Selling Price</th>
+                  <th className="px-6 py-4.5">Buying Price</th>
                   <th className="px-6 py-4.5">Stock</th>
                   <th className="px-6 py-4.5 text-right">Actions</th>
                 </tr>
@@ -326,6 +331,7 @@ export default function DashboardProductsPage() {
                       <td className="px-6 py-3.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">{product.brand || 'VESTRA'}</td>
                       <td className="px-6 py-3.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">{product.category}</td>
                       <td className="px-6 py-3.5 font-black text-dark">৳{product.price.toLocaleString()}</td>
+                      <td className="px-6 py-3.5 font-black text-zinc-500">৳{(product.buyingPrice !== undefined ? product.buyingPrice : Math.round(product.price * 0.6)).toLocaleString()}</td>
                       <td className="px-6 py-3.5 font-semibold text-zinc-500">
                         {product.stock ?? 25} units
                       </td>
@@ -448,8 +454,7 @@ export default function DashboardProductsPage() {
             
             {/* Form body */}
             <form onSubmit={(e) => handleFormSubmit(e, false)} className="flex-grow overflow-y-auto p-6 space-y-5">
-              {/* AI Content Generator Integration */}
-              <CaptionGenerator onGenerated={handleAiGenerated} />
+
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Name */}
@@ -522,7 +527,7 @@ export default function DashboardProductsPage() {
 
                 {/* Price */}
                 <div>
-                  <label htmlFor="add-price" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Price (৳)</label>
+                  <label htmlFor="add-price" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Selling Price (৳)</label>
                   <input
                     id="add-price"
                     type="number"
@@ -530,6 +535,20 @@ export default function DashboardProductsPage() {
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     placeholder="1500"
+                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
+                  />
+                </div>
+
+                {/* Buying Price */}
+                <div>
+                  <label htmlFor="add-buying-price" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Buying Price (৳)</label>
+                  <input
+                    id="add-buying-price"
+                    type="number"
+                    required
+                    value={formData.buyingPrice}
+                    onChange={(e) => setFormData({ ...formData, buyingPrice: e.target.value })}
+                    placeholder="900"
                     className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
                   />
                 </div>
@@ -667,8 +686,7 @@ export default function DashboardProductsPage() {
             
             {/* Form body */}
             <form onSubmit={(e) => handleFormSubmit(e, true)} className="flex-grow overflow-y-auto p-6 space-y-5">
-              {/* AI Content Generator Integration */}
-              <CaptionGenerator onGenerated={handleAiGenerated} />
+
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Name */}
@@ -739,13 +757,26 @@ export default function DashboardProductsPage() {
 
                 {/* Price */}
                 <div>
-                  <label htmlFor="edit-price" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Price (৳)</label>
+                  <label htmlFor="edit-price" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Selling Price (৳)</label>
                   <input
                     id="edit-price"
                     type="number"
                     required
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
+                  />
+                </div>
+
+                {/* Buying Price */}
+                <div>
+                  <label htmlFor="edit-buying-price" className="block text-[10px] font-heading font-bold uppercase tracking-wider text-zinc-400 mb-2">Buying Price (৳)</label>
+                  <input
+                    id="edit-buying-price"
+                    type="number"
+                    required
+                    value={formData.buyingPrice}
+                    onChange={(e) => setFormData({ ...formData, buyingPrice: e.target.value })}
                     className="w-full px-4 py-3 bg-white border border-zinc-200 focus:border-dark rounded-xl text-xs font-body outline-none"
                   />
                 </div>

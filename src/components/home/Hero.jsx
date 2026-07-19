@@ -16,7 +16,7 @@ export default function Hero() {
             fill
             priority
             sizes="100vw"
-            className="object-cover object-center opacity-100 scale-105 transition-transform duration-500"
+            className="object-cover object-[80%_center] opacity-100 scale-105 transition-transform duration-500"
           />
           {/* Left-fading dark gradient mask to protect text readability */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/35 to-transparent z-10" />

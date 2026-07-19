@@ -52,30 +52,49 @@ Live Demo: [https://vestra-fashion-store.vercel.app/](https://vestra-fashion-sto
 
 ---
 
-## 📂 Project Directory Structure
+## 📂 Project Directory Structure (Line-by-Line Guide)
 
-```text
-VESTRA/
-├── public/                 # Static assets (images, vectors, fonts)
-├── src/
-│   ├── app/                # Next.js App Router routing directories
-│   │   ├── about/          # About page route
-│   │   ├── cart/           # Redundant (Removed in favor of Drawer)
-│   │   ├── contact/        # Contact form page route
-│   │   ├── login/          # Login access form
-│   │   ├── products/       # Products list & dynamic Details routes
-│   │   ├── register/       # Create account form
-│   │   ├── globals.css     # Global Tailwind configurations
-│   │   └── layout.js       # Root Layout wrapper
-│   ├── components/         # Reusable layouts and components
-│   │   ├── home/           # Homepage modular sections
-│   │   ├── layout/         # Navigation, Footer, and CartDrawer
-│   │   └── ui/             # Core UI atoms (buttons, cards, stars, toaster)
-│   ├── data/               # Local JSON database arrays (products, categories, reviews)
-│   └── utils/              # Centralized helpers (cart localStorage manager)
-├── package.json            # Scripts and dependencies
-└── README.md               # Presentation guidelines
-```
+### 🖥️ Next.js Application Pages (`src/app/`)
+* **[layout.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/layout.js)**: Root application wrapper. Configures the React Query client, Authentication context provider, global fonts, and mounts global layout elements: [Navbar](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/layout/Navbar.jsx), [CartDrawer](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/layout/CartDrawer.jsx), [WishlistDrawer](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/layout/WishlistDrawer.jsx), and [ChatWidget](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/ai/ChatWidget.jsx).
+* **[page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/page.js)**: Front store landing page. Renders the main Hero banner, featured catalog lists, brand trust statements, and customer testomonials.
+* **[products/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/products/page.js)**: Main shopping catalog search page. Features category tabs, price range filters, search inputs, and pagination controls.
+* **[products/[id]/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/products/%5Bid%5D/page.js)**: Dynamic product details page. Implements selector options for sizes, color pickers, reviews timeline, and DB-synchronized wishlist toggle buttons.
+* **[profile/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/profile/page.js)**: Customer profile dashboard. Allows authenticated clients to view and modify their Name, Email, and Mobile number.
+* **[orders/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/orders/page.js)**: Customer orders tracking board, displaying all purchase receipts and checkout timeline status.
+* **[reports/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/reports/page.js)**: Customer contact log tracker, matching authenticated user profile records.
+* **[contact/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/contact/page.js)**: Contact Us form. Pre-fills customer identity fields automatically using active sessions.
+* **[about/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/about/page.js)**: Minimalist brand story details, mission manifesto, and corporate figures.
+* **[login/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/login/page.js)** & **[register/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/register/page.js)**: Client authorization forms.
+
+### 🛡️ Admin Dashboard Console (`src/app/dashboard/`)
+* **[layout.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/layout.js)**: Admin dashboard sidebar navigation and headers. Implements responsive sidebar touch-out auto-closing behavior.
+* **[page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/page.js)**: Admin overview KPI dashboard, graphing revenue, orders, and sales distribution.
+* **[products/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/products/page.js)**: Product catalog inventory manager (adding, editing, deleting items with AI descriptive tag generator).
+* **[orders/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/orders/page.js)**: Platform order tracker. Allows administrators to update checkout states to 'Delivered' or cancel shipments.
+* **[reviews/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/reviews/page.js)**: Customer reviews feedback board.
+* **[reports/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/reports/page.js)**: Customer contact message logs moderation table.
+* **[users/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/users/page.js)**: Platform user moderation. Allows admins to block or unblock client accounts.
+* **[chats/page.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/app/dashboard/chats/page.js)**: Stylist chat console. Supports manual takeover toggles and catalog tagging tools.
+
+### 📦 Modular Components (`src/components/`)
+* **[layout/Navbar.jsx](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/layout/Navbar.jsx)**: Global navigation bar featuring custom badges and dropdown profile menus.
+* **[layout/CartDrawer.jsx](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/layout/CartDrawer.jsx)**: Shopping bag slider.
+* **[layout/WishlistDrawer.jsx](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/layout/WishlistDrawer.jsx)**: Storefront wishlist drawer.
+* **[ai/ChatWidget.jsx](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/ai/ChatWidget.jsx)**: Floating AI chatbot widget. Implements real-time background query polling.
+* **[ai/CaptionGenerator.jsx](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/ai/CaptionGenerator.jsx)**: Gemini AI describer. Generates tags based on image uploads.
+* **[ui/ProductCard.jsx](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/components/ui/ProductCard.jsx)**: Store product grid card with synchronized MongoDB wishlist triggers.
+
+### ⚙️ Infrastructure Libraries (`src/lib/`)
+* **[apiClient.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/lib/apiClient.js)**: Unified Axios wrapper.
+* **[auth-context.js](file:///Users/zabedmahmud/Documents/Projects/Vestra-Fashion/Vestra-Fasion-Client/src/lib/auth-context.js)**: Session management framework.
+
+---
+
+## 🔗 Live Application Links
+- **Front Storefront**: [https://vestra-fashion-store.vercel.app/](https://vestra-fashion-store.vercel.app/)
+- **API Server Endpoint**: `https://vestra-fashion-server.vercel.app` (Substitute with production API gateway url as needed)
+
+---
 
 ---
 

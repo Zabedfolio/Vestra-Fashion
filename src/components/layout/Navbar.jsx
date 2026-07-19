@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Magnifier, ShoppingBag, Heart, Bars, Xmark, Person, ChevronDown, ChartBar, Box, ArrowRightFromSquare, CircleExclamation } from '@gravity-ui/icons';
 import { useAuth } from '../../lib/auth-context';
+import { apiClient } from '../../lib/apiClient';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -45,19 +46,28 @@ export default function Navbar() {
     };
   }, []);
 
-  // Sync wishlist count from localStorage
+  // Sync wishlist count
   useEffect(() => {
-    const updateWishlistCount = () => {
-      try {
-        const stored = localStorage.getItem('vestra_wishlist');
-        if (stored) {
-          const items = JSON.parse(stored);
-          setWishlistCount(items.length);
-        } else {
-          setWishlistCount(0);
+    const updateWishlistCount = async () => {
+      if (user) {
+        try {
+          const data = await apiClient.get('/api/wishlist');
+          setWishlistCount(data.length);
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) {
-        console.error(e);
+      } else {
+        try {
+          const stored = localStorage.getItem('vestra_wishlist');
+          if (stored) {
+            const items = JSON.parse(stored);
+            setWishlistCount(items.length);
+          } else {
+            setWishlistCount(0);
+          }
+        } catch (e) {
+          console.error(e);
+        }
       }
     };
 
@@ -67,12 +77,14 @@ export default function Navbar() {
     window.addEventListener('storage', updateWishlistCount);
     // Listen to custom wishlist events dispatched inside product cards
     window.addEventListener('wishlist-updated', updateWishlistCount);
+    window.addEventListener('wishlist-change', updateWishlistCount);
     
     return () => {
       window.removeEventListener('storage', updateWishlistCount);
       window.removeEventListener('wishlist-updated', updateWishlistCount);
+      window.removeEventListener('wishlist-change', updateWishlistCount);
     };
-  }, []);
+  }, [user]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -224,13 +236,24 @@ export default function Navbar() {
                           </Link>
 
                           <Link
-                            href="/products?wishlist=true"
+                            href="/profile"
                             onClick={() => setIsProfileOpen(false)}
                             className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors"
                           >
+                            <Person className="w-3.5 h-3.5 flex-shrink-0 text-dark" />
+                            <span>My Profile</span>
+                          </Link>
+
+                          <button
+                            onClick={() => {
+                              setIsProfileOpen(false);
+                              window.dispatchEvent(new Event('open-wishlist'));
+                            }}
+                            className="w-full text-left flex items-center gap-2.5 px-4 py-2.5 text-xs font-heading font-bold text-dark hover:bg-zinc-50 uppercase tracking-wider transition-colors cursor-pointer"
+                          >
                             <Heart className="w-3.5 h-3.5 flex-shrink-0 text-dark" />
                             <span>Wishlist</span>
-                          </Link>
+                          </button>
 
                           <Link
                             href="/reports"
@@ -268,16 +291,19 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Wishlist Link */}
+            {/* Wishlist Button */}
             {(!user || user.role !== 'admin') && (
-              <Link href="/products?wishlist=true" className="relative text-dark p-2 hover:bg-zinc-100 rounded-full transition">
+              <button
+                onClick={() => window.dispatchEvent(new Event('open-wishlist'))}
+                className="hidden sm:inline-flex relative text-dark p-2 hover:bg-zinc-100 rounded-full transition cursor-pointer"
+              >
                 <Heart className="w-5 h-5" />
                 {wishlistCount > 0 && (
                   <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-dark rounded-full">
                     {wishlistCount}
                   </span>
                 )}
-              </Link>
+              </button>
             )}
 
             {/* Shopping Cart Button */}
@@ -446,13 +472,41 @@ export default function Navbar() {
                       Admin Dashboard
                     </Link>
                   ) : (
-                    <Link
-                      href="/orders"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="block text-center text-xs font-bold uppercase tracking-wider py-3 border border-zinc-200 text-zinc-600 hover:border-dark rounded-xl transition duration-200"
-                    >
-                      My Orders
-                    </Link>
+                    <div className="space-y-2">
+                      <Link
+                        href="/orders"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="block text-center text-xs font-bold uppercase tracking-wider py-3 border border-zinc-200 text-zinc-600 hover:border-dark rounded-xl transition duration-200"
+                      >
+                        My Orders
+                      </Link>
+
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="block text-center text-xs font-bold uppercase tracking-wider py-3 border border-zinc-200 text-zinc-600 hover:border-dark rounded-xl transition duration-200"
+                      >
+                        My Profile
+                      </Link>
+
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          window.dispatchEvent(new Event('open-wishlist'));
+                        }}
+                        className="w-full text-center text-xs font-bold uppercase tracking-wider py-3 border border-zinc-200 text-zinc-600 hover:border-dark rounded-xl transition duration-200 cursor-pointer"
+                      >
+                        Wishlist ({wishlistCount})
+                      </button>
+
+                      <Link
+                        href="/reports"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="block text-center text-xs font-bold uppercase tracking-wider py-3 border border-zinc-200 text-zinc-600 hover:border-dark rounded-xl transition duration-200"
+                      >
+                        Reports
+                      </Link>
+                    </div>
                   )}
                   <button
                     onClick={() => {

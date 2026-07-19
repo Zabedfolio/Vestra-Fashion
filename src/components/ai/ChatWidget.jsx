@@ -4,10 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { apiClient } from '../../lib/apiClient';
+import { useAuth } from '../../lib/auth-context';
 
 export default function ChatWidget() {
   const pathname = usePathname();
   if (pathname?.startsWith('/dashboard')) return null;
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -21,21 +23,65 @@ export default function ChatWidget() {
 
   const messagesEndRef = useRef(null);
 
-  // Restore conversation ID from sessionStorage on mount
+  // Load chat session dynamically
   useEffect(() => {
-    const savedConvoId = sessionStorage.getItem('vestra_convo_id');
-    if (savedConvoId) {
-      setConversationId(savedConvoId);
-    }
-
-    // Add initial stylist greeting
-    setMessages([
-      {
-        role: 'assistant',
-        content: "Hello! I am the Vestra Stylist. I can recommend premium minimalist outfits from our catalog, answer sizing questions, or guide your style. What are you looking for today?",
+    const loadSession = async () => {
+      if (user) {
+        try {
+          const convo = await apiClient.get('/api/ai/chat/user-conversation');
+          if (convo) {
+            setConversationId(convo._id);
+            setMessages(convo.messages || []);
+          }
+        } catch (err) {
+          console.error('Error loading user conversation:', err);
+        }
+      } else {
+        const savedConvoId = localStorage.getItem('vestra_guest_convo_id');
+        if (savedConvoId) {
+          setConversationId(savedConvoId);
+          try {
+            const data = await apiClient.get(`/api/ai/chat/history?conversationId=${savedConvoId}`);
+            if (data.messages) {
+              setMessages(data.messages);
+            }
+          } catch (err) {
+            console.error('Error loading guest conversation history:', err);
+          }
+        } else {
+          setMessages([
+            {
+              role: 'assistant',
+              content: "Hello! I am the Vestra Stylist. I can recommend premium minimalist outfits from our catalog, answer sizing questions, or guide your style. What are you looking for today?",
+            }
+          ]);
+        }
       }
-    ]);
-  }, []);
+    };
+
+    loadSession();
+  }, [user]);
+
+  // Background polling for admin manual replies
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    const pollHistory = async () => {
+      try {
+        const data = await apiClient.get(`/api/ai/chat/history?conversationId=${conversationId}`);
+        if (data.messages && JSON.stringify(data.messages) !== JSON.stringify(messages)) {
+          setMessages(data.messages);
+        }
+      } catch (err) {
+        console.error('Polling chat history error:', err);
+      }
+    };
+
+    pollHistory(); // Run immediately on open/update to prevent waiting!
+
+    const interval = setInterval(pollHistory, 2500); // Snappier 2.5s polling interval
+    return () => clearInterval(interval);
+  }, [isOpen, conversationId, messages]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -63,7 +109,9 @@ export default function ChatWidget() {
 
       if (result.conversationId) {
         setConversationId(result.conversationId);
-        sessionStorage.setItem('vestra_convo_id', result.conversationId);
+        if (!user) {
+          localStorage.setItem('vestra_guest_convo_id', result.conversationId);
+        }
       }
 
       // Append assistant message
@@ -88,6 +136,7 @@ export default function ChatWidget() {
 
   // Convert markdown-style product links [name](/products/id) into clickable elements
   const formatMessageText = (text) => {
+    if (!text) return '';
     const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const parts = [];
     let lastIndex = 0;
@@ -124,23 +173,25 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 font-body">
+    <div className="font-body">
       {/* Floating Toggle Button */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="w-14 h-14 bg-dark text-white hover:text-dark hover:bg-[#C9FA75] rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 active:scale-95 cursor-pointer border border-zinc-800"
-          aria-label="Open Vestra Stylist Chat"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 21l3.597-1.199a8.032 8.032 0 006.197-3.236m-1.936-4.82c.119-.517.185-1.056.185-1.608 0-4.418-3.582-8-8-8a8.003 8.003 0 00-7 4.5m10.5 4.5a3.502 3.502 0 01-3.5 3.5 3.502 3.502 0 01-3.5-3.5c0-.983.405-1.87 1.057-2.505M13.5 10.5h.008v.008H13.5V10.5zm-3.75.375h.008v.008H9.75v-.008z" />
-          </svg>
-        </button>
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="w-14 h-14 bg-dark text-white hover:text-dark hover:bg-[#C9FA75] rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 transform hover:scale-105 active:scale-95 cursor-pointer border border-zinc-800"
+            aria-label="Open Vestra Stylist Chat"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 21l3.597-1.199a8.032 8.032 0 006.197-3.236m-1.936-4.82c.119-.517.185-1.056.185-1.608 0-4.418-3.582-8-8-8a8.003 8.003 0 00-7 4.5m10.5 4.5a3.502 3.502 0 01-3.5 3.5 3.502 3.502 0 01-3.5-3.5c0-.983.405-1.87 1.057-2.505M13.5 10.5h.008v.008H13.5V10.5zm-3.75.375h.008v.008H9.75v-.008z" />
+            </svg>
+          </button>
+        </div>
       )}
 
       {/* Expanded Chat Dialog */}
       {isOpen && (
-        <div className="w-[360px] sm:w-[400px] h-[500px] bg-dark text-white rounded-2xl shadow-2xl border border-zinc-850 flex flex-col overflow-hidden animate-slide-in">
+        <div className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 w-full sm:w-[400px] h-full sm:h-[550px] bg-dark text-white sm:rounded-2xl shadow-2xl border border-zinc-850 sm:border-zinc-800/80 flex flex-col overflow-hidden z-45 animate-slide-in">
           
           {/* Header */}
           <div className="bg-zinc-950 px-5 py-4 flex justify-between items-center border-b border-zinc-900">
