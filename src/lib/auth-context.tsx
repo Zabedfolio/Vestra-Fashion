@@ -4,16 +4,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiClient } from './apiClient';
 import toast from 'react-hot-toast';
 
-const AuthContext = createContext({
+interface AuthContextType {
+  user: any;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<any>;
+  register: (name: string, email: string, password: string) => Promise<any>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  login: async () => {},
-  register: async () => {},
+  login: async () => null,
+  register: async () => null,
   logout: async () => {},
   refreshUser: async () => {},
 });
 
-export function AuthProvider({ children }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 

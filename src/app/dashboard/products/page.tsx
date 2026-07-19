@@ -54,21 +54,21 @@ export default function DashboardProductsPage() {
 
   // Add Product Mutation
   const addProductMutation = useMutation({
-    mutationFn: (newProduct) => apiClient.post('/api/products', newProduct),
+    mutationFn: (newProduct: any) => apiClient.post('/api/products', newProduct),
     onSuccess: () => {
       toast.success('Product created successfully!');
       setIsAddModalOpen(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to create product');
     }
   });
 
   // Edit Product Mutation
   const editProductMutation = useMutation({
-    mutationFn: ({ id, update }) => apiClient.put(`/api/products/${id}`, update),
+    mutationFn: ({ id, update }: { id: string; update: any }) => apiClient.put(`/api/products/${id}`, update),
     onSuccess: () => {
       toast.success('Product updated successfully!');
       setIsEditModalOpen(false);
@@ -76,19 +76,19 @@ export default function DashboardProductsPage() {
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to update product');
     }
   });
 
   // Delete Product Mutation
   const deleteProductMutation = useMutation({
-    mutationFn: (id) => apiClient.delete(`/api/products/${id}`),
+    mutationFn: (id: string) => apiClient.delete(`/api/products/${id}`),
     onSuccess: () => {
       toast.success('Product deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to delete product');
     }
   });

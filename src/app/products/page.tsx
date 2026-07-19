@@ -27,16 +27,6 @@ function ProductsContent() {
   // Fetch products from backend via TanStack Query
   const { data, isLoading, isError } = useQuery({
     queryKey: ['products', selectedCategory, searchQuery, maxPriceFilter, sortBy, currentPage],
-    queryFn: () => apiClient.get(`/api/products`, {
-      params: {
-        category: selectedCategory,
-        search: searchQuery,
-        maxPrice: maxPriceFilter,
-        sort: sortBy,
-        page: currentPage,
-        limit: productsPerPage,
-      }
-    }),
     // Custom query parsing since apiClient doesn't take params directly (we can construct query string manually or update query)
     // Wait, let's look at apiClient.js. It does: `apiClient.get(path, options)`. 
     // It appends `path` to base url. So we must pass the query string manually: `/api/products?category=...`

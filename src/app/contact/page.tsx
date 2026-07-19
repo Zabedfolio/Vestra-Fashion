@@ -139,7 +139,7 @@ export default function ContactPage() {
                 <textarea
                   id="message"
                   required
-                  rows="5"
+                  rows={5}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Write your message here..."

@@ -17,24 +17,24 @@ export default function DashboardCustomersPage() {
 
   // Promote/Demote Role Mutation
   const changeRoleMutation = useMutation({
-    mutationFn: ({ id, role }) => apiClient.patch(`/api/users/${id}/role`, { role }),
+    mutationFn: ({ id, role }: { id: string; role: string }) => apiClient.patch(`/api/users/${id}/role`, { role }),
     onSuccess: () => {
       toast.success('User role modified successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to change role');
     }
   });
 
   // Block/Unblock User Mutation
   const toggleBlockMutation = useMutation({
-    mutationFn: ({ id, isBlocked }) => apiClient.patch(`/api/users/${id}/block`, { isBlocked }),
+    mutationFn: ({ id, isBlocked }: { id: string; isBlocked: boolean }) => apiClient.patch(`/api/users/${id}/block`, { isBlocked }),
     onSuccess: () => {
       toast.success('User restriction status updated');
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to modify status');
     }
   });

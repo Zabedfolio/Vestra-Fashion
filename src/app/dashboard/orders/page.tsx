@@ -17,21 +17,21 @@ export default function DashboardOrdersPage() {
 
   // Modify Order Status Mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => apiClient.patch(`/api/orders/${id}/status`, { status }),
+    mutationFn: ({ id, status }: { id: string; status: string }) => apiClient.patch(`/api/orders/${id}/status`, { status }),
     onSuccess: () => {
       toast.success('Order status updated successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to update status');
     }
   });
 
-  const handleStatusChange = (id, newStatus) => {
+  const handleStatusChange = (id: string, newStatus: string) => {
     updateStatusMutation.mutate({ id, status: newStatus });
   };
 
-  const getStatusClass = (status) => {
+  const getStatusClass = (status: string) => {
     switch (status) {
       case 'paid': return 'bg-emerald-100 text-emerald-800';
       case 'shipped': return 'bg-blue-100 text-blue-800';

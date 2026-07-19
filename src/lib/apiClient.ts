@@ -1,10 +1,10 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-async function request(path, options = {}) {
+async function request(path: string, options: any = {}) {
   const url = `${API_BASE_URL}${path}`;
 
   // Default options including credentials for sessions cookies
-  const defaultOptions = {
+  const defaultOptions: any = {
     credentials: 'include',
     headers: {},
     ...options,
@@ -33,9 +33,9 @@ async function request(path, options = {}) {
 }
 
 export const apiClient = {
-  get: (path, options = {}) => request(path, { ...options, method: 'GET' }),
-  post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body }),
-  put: (path, body, options = {}) => request(path, { ...options, method: 'PUT', body }),
-  patch: (path, body, options = {}) => request(path, { ...options, method: 'PATCH', body }),
-  delete: (path, options = {}) => request(path, { ...options, method: 'DELETE' }),
+  get: (path: string, options: any = {}) => request(path, { ...options, method: 'GET' }),
+  post: (path: string, body?: any, options: any = {}) => request(path, { ...options, method: 'POST', body }),
+  put: (path: string, body?: any, options: any = {}) => request(path, { ...options, method: 'PUT', body }),
+  patch: (path: string, body?: any, options: any = {}) => request(path, { ...options, method: 'PATCH', body }),
+  delete: (path: string, options: any = {}) => request(path, { ...options, method: 'DELETE' }),
 };

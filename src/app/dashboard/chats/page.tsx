@@ -46,20 +46,20 @@ export default function DashboardChatsPage() {
 
   // Reply Mutation
   const replyMutation = useMutation({
-    mutationFn: ({ id, message }) => apiClient.post(`/api/admin/chats/${id}/reply`, { message }),
+    mutationFn: ({ id, message }: { id: string; message: string }) => apiClient.post(`/api/admin/chats/${id}/reply`, { message }),
     onSuccess: () => {
       setReplyText('');
       queryClient.invalidateQueries({ queryKey: ['admin-chats-list'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to send response');
     },
   });
 
   // Toggle AI Mutation
   const toggleAiMutation = useMutation({
-    mutationFn: ({ id, aiEnabled }) => apiClient.post(`/api/admin/chats/${id}/toggle-ai`, { aiEnabled }),
-    onSuccess: (data) => {
+    mutationFn: ({ id, aiEnabled }: { id: string; aiEnabled: boolean }) => apiClient.post(`/api/admin/chats/${id}/toggle-ai`, { aiEnabled }),
+    onSuccess: (data: any) => {
       toast.success(data.aiEnabled ? 'AI Assistant activated' : 'AI Assistant disabled. You have manual control.');
       queryClient.invalidateQueries({ queryKey: ['admin-chats-list'] });
     },

@@ -52,20 +52,20 @@ export default function CustomerOrdersPage() {
 
   // Submit Review Mutation
   const submitReviewMutation = useMutation({
-    mutationFn: (newReview) => apiClient.post('/api/reviews', newReview),
+    mutationFn: (newReview: { productId: string; rating: number; comment: string }) => apiClient.post('/api/reviews', newReview),
     onSuccess: () => {
       toast.success('Review submitted! It will appear after admin approval.', { duration: 5000 });
       setReviewModal((prev) => ({ ...prev, isOpen: false }));
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to submit review');
     }
   });
 
   // Submit Report Mutation
   const submitReportMutation = useMutation({
-    mutationFn: (newReport) => apiClient.post('/api/reports', newReport),
+    mutationFn: (newReport: { orderId: string; problem: string; image: string | null }) => apiClient.post('/api/reports', newReport),
     onSuccess: () => {
       toast.success('Report submitted successfully. Our support team will review it shortly.', { duration: 5000 });
       setReportModal({
@@ -76,7 +76,7 @@ export default function CustomerOrdersPage() {
         isUploading: false
       });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to submit report');
     }
   });

@@ -20,21 +20,21 @@ export default function DashboardReportsPage() {
 
   // Update report status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => apiClient.patch(`/api/reports/${id}/status`, { status }),
+    mutationFn: ({ id, status }: { id: string; status: string }) => apiClient.patch(`/api/reports/${id}/status`, { status }),
     onSuccess: () => {
       toast.success('Report status updated successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-reports-list'] });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to update report status');
     }
   });
 
-  const handleStatusChange = (id, newStatus) => {
+  const handleStatusChange = (id: string, newStatus: string) => {
     updateStatusMutation.mutate({ id, status: newStatus });
   };
 
-  const getStatusClass = (status) => {
+  const getStatusClass = (status: string) => {
     switch (status) {
       case 'resolved': return 'bg-emerald-100 text-emerald-800';
       case 'in-progress': return 'bg-blue-100 text-blue-800';

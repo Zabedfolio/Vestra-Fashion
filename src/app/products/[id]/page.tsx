@@ -142,14 +142,14 @@ export default function ProductDetailPage() {
 
   // Submit Review Mutation
   const submitReviewMutation = useMutation({
-    mutationFn: (newReview) => apiClient.post('/api/reviews', newReview),
+    mutationFn: (newReview: { productId: any; rating: number; comment: string }) => apiClient.post('/api/reviews', newReview),
     onSuccess: () => {
       toast.success('Review submitted! It will appear after admin approval.', { duration: 5000 });
       setReviewComment('');
       setReviewRating(5);
       // Don't invalidate reviews query — review is pending, won't show until approved
     },
-    onError: (err) => {
+    onError: (err: any) => {
       toast.error(err.message || 'Failed to submit review');
     }
   });
