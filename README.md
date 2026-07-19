@@ -1,12 +1,12 @@
 # VESTRA | Premium Modern Minimalist Fashion Store
 
-[![Vercel Deployment](https://img.shields.io/badge/Deployment-Vercel-success?logo=vercel&logoColor=white&color=000000)](https://vestra-fashion-store.vercel.app/)
+[![Vercel Deployment](https://img.shields.io/badge/Deployment-Vercel-success?logo=vercel&logoColor=white&color=000000)](https://vestra-fashion.vercel.app/)
 [![Next.js](https://img.shields.io/badge/Framework-Next.js%2015-black?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%204-06B6D4?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
 **VESTRA** is a premium, state-of-the-art e-commerce storefront presenting clean lines, modern typography, and curated minimalist wardrobe essentials for Men, Women, and Kids.
 
-Live Demo: [https://vestra-fashion-store.vercel.app/](https://vestra-fashion-store.vercel.app/)
+Live Demo: [https://vestra-fashion.vercel.app/](https://vestra-fashion.vercel.app/)
 
 ---
 
@@ -172,7 +172,7 @@ sequenceDiagram
 ---
 
 ## 🔗 Live Application Links
-- **Front Storefront**: [https://vestra-fashion-store.vercel.app/](https://vestra-fashion-store.vercel.app/)
+- **Front Storefront**: [https://vestra-fashion.vercel.app/](https://vestra-fashion.vercel.app/)
 - **API Server Endpoint**: `https://vestra-fashion-server.vercel.app` (Substitute with production API gateway url as needed)
 
 ---
