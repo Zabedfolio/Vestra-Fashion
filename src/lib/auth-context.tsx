@@ -44,6 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email, password) => {
     try {
       const data = await apiClient.post('/api/auth/login', { email, password });
+      if (data.token) {
+        localStorage.setItem('vestra_session_token', data.token);
+      }
       setUser(data.user);
       toast.success(`Welcome back, ${data.user.name}!`);
       return data.user;
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await apiClient.post('/api/auth/logout');
+      localStorage.removeItem('vestra_session_token');
       setUser(null);
       toast.success('Signed out successfully');
     } catch (error) {

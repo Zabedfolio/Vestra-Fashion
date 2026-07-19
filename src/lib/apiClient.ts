@@ -10,6 +10,14 @@ async function request(path: string, options: any = {}) {
     ...options,
   };
 
+  // Add authorization header if token is stored in localStorage
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('vestra_session_token');
+    if (token) {
+      defaultOptions.headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   // Automatically JSON stringify body and add JSON header if applicable
   if (options.body && !(options.body instanceof FormData)) {
     defaultOptions.headers['Content-Type'] = 'application/json';
